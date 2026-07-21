@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shadow — тренажер вимови та просодії</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c2541;
+    --paper:#f7f5f0;
+    --paper-2:#efece3;
+    --teal:#1f8a82;
+    --teal-dark:#146a63;
+    --coral:#d95d4a;
+    --amber:#d99a33;
+    --green:#3f9463;
+    --line:#dcd7c9;
+  }
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+  }
+  .font-display{font-family:'Fraunces',serif;}
+  .font-mono{font-family:'JetBrains Mono',monospace;}
+
+  /* signature waveform */
+  .wave{display:flex;align-items:flex-end;gap:3px;height:28px;}
+  .wave span{
+    display:block;width:3px;background:var(--teal);border-radius:2px;
+    animation:wave 1.1s ease-in-out infinite;
+    opacity:.35;
+  }
+  .wave.active span{opacity:1;}
+  .wave span:nth-child(1){height:40%;animation-delay:0s;}
+  .wave span:nth-child(2){height:70%;animation-delay:.1s;}
+  .wave span:nth-child(3){height:100%;animation-delay:.2s;}
+  .wave span:nth-child(4){height:55%;animation-delay:.3s;}
+  .wave span:nth-child(5){height:85%;animation-delay:.4s;}
+  .wave span:nth-child(6){height:30%;animation-delay:.5s;}
+  @keyframes wave{
+    0%,100%{transform:scaleY(.4);}
+    50%{transform:scaleY(1);}
+  }
+  .wave:not(.active) span{animation-play-state:paused;}
+
+  .word{
+    cursor:pointer;
+    border-radius:4px;
+    padding:1px 2px;
+    transition:background .15s ease, color .15s ease;
+  }
+  .word:hover{background:var(--paper-2);}
+  .word.active-word{
+    background:var(--ink);
+    color:var(--paper);
+  }
+  .word.g-correct{background:#e3f2e8;color:var(--green);}
+  .word.g-wrong{background:#fbe7e3;color:var(--coral);}
+  .word.g-partial{background:#faf0da;color:var(--amber);}
+
+  .chip{
+    border:1px solid var(--line);
+    background:#fff;
+  }
+  .chip.on{
+    background:var(--ink);
+    color:var(--paper);
+    border-color:var(--ink);
+  }
+
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:#cfc9b8;border-radius:4px;}
+
+  .countdown-num{
+    font-family:'Fraunces',serif;
+    font-size:6rem;
+    line-height:1;
+  }
+
+  .fade-in{animation:fadeIn .25s ease both;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .barbg{background:var(--paper-2);}
+  .bar-fill{background:linear-gradient(90deg,var(--teal),var(--teal-dark));}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- HEADER -->
+<header class="border-b" style="border-color:var(--line)">
+  <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div id="headerWave" class="wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div>
+        <h1 class="font-display text-2xl font-semibold tracking-tight">Shadow</h1>
+        <p class="text-xs text-stone-500 -mt-1">тренажер вимови та просодії · shadowing</p>
+      </div>
+    </div>
+    <div class="text-xs text-stone-500 hidden sm:block max-w-xs text-right">
+      Повністю безкоштовно · працює у браузері · нічого не завантажується на сервер
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 py-8 grid lg:grid-cols-[1fr_320px] gap-8">
+
+  <!-- LEFT: main workspace -->
+  <div class="space-y-8">
+
+    <!-- STEP 1: SOURCE -->
+    <section class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="font-mono text-xs px-2 py-1 rounded bg-stone-100 text-stone-500">01</span>
+        <h2 class="font-display text-lg font-semibold">Матеріал для тренування</h2>
+      </div>
+
+      <div class="flex flex-wrap gap-2 mb-4" id="sourceTabs">
+        <button data-tab="manual" class="chip on px-3 py-1.5 rounded-full text-sm">Свій текст</button>
+        <button data-tab="youtube" class="chip px-3 py-1.5 rounded-full text-sm">YouTube / TED</button>
+        <button data-tab="demo" class="chip px-3 py-1.5 rounded-full text-sm">Демо-тексти</button>
+      </div>
+
+      <!-- manual -->
+      <div id="tab-manual">
+        <textarea id="manualText" rows="6" placeholder="Вставте або надрукуйте текст для тренування вимови..."
+          class="w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2" style="border-color:var(--line);"></textarea>
+        <button id="loadManualBtn" class="mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">Завантажити текст</button>
+      </div>
+
+      <!-- youtube -->
+      <div id="tab-youtube" class="hidden space-y-3">
+        <div class="flex gap-2">
+          <input id="ytUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." class="flex-1 border rounded-xl px-3 py-2 text-sm" style="border-color:var(--line)">
+          <button id="ytFetchBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap" style="background:var(--teal)">Отримати субтитри</button>
+        </div>
+        <p id="ytStatus" class="text-xs text-stone-500"></p>
+        <p class="text-xs text-stone-400">Примітка: автоматичне отримання субтитрів залежить від того, чи є вони публічно доступні для відео, і може не спрацювати в деяких браузерах через обмеження CORS. Якщо не вдалось — скопіюйте транскрипт вручну (кнопка "..." → "Показати транскрипт" під відео на YouTube) і вставте його на вкладці «Свій текст».</p>
+      </div>
+
+      <!-- demo -->
+      <div id="tab-demo" class="hidden">
+        <p class="text-sm text-stone-500 mb-3">Оберіть рівень — текст згенерується автоматично.</p>
+        <div class="flex gap-2 flex-wrap">
+          <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="A2">A2</button>
+          <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="B1">B1</button>
+          <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="B2">B2</button>
+          <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="C1">C1</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2: PLAYER -->
+    <section class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="font-mono text-xs px-2 py-1 rounded bg-stone-100 text-stone-500">02</span>
+        <h2 class="font-display text-lg font-semibold">Прослуховування (Shadowing)</h2>
+      </div>
+
+      <!-- controls row -->
+      <div class="flex flex-wrap gap-4 items-end mb-4">
+        <div>
+          <label class="text-xs text-stone-500 block mb-1">Мова озвучення</label>
+          <select id="voiceSelect" class="border rounded-lg px-2 py-1.5 text-sm" style="border-color:var(--line)"></select>
+        </div>
+        <div>
+          <label class="text-xs text-stone-500 block mb-1">Швидкість</label>
+          <div class="flex gap-1" id="rateGroup">
+            <button data-rate="0.75" class="rate-btn chip px-3 py-1.5 rounded-lg text-sm">0.75x</button>
+            <button data-rate="0.9" class="rate-btn chip px-3 py-1.5 rounded-lg text-sm">0.9x</button>
+            <button data-rate="1.0" class="rate-btn chip on px-3 py-1.5 rounded-lg text-sm">1.0x</button>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-stone-500 block mb-1">Режим</label>
+          <div class="flex gap-1">
+            <button data-mode="full" class="mode-btn chip on px-3 py-1.5 rounded-lg text-sm">Повний текст</button>
+            <button data-mode="chunk" class="mode-btn chip px-3 py-1.5 rounded-lg text-sm">По реченнях</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- chunk nav -->
+      <div id="chunkNav" class="hidden items-center gap-3 mb-4">
+        <button id="prevChunk" class="px-3 py-1.5 rounded-lg border text-sm" style="border-color:var(--line)">← Назад</button>
+        <span id="chunkIndicator" class="text-sm font-mono text-stone-500">1 / 1</span>
+        <button id="nextChunk" class="px-3 py-1.5 rounded-lg border text-sm" style="border-color:var(--line)">Далі →</button>
+      </div>
+
+      <!-- text display -->
+      <div id="textDisplay" class="border rounded-xl p-5 min-h-[140px] leading-relaxed text-lg" style="border-color:var(--line); background:var(--paper)">
+        <span class="text-stone-400 text-sm">Текст з'явиться тут після завантаження матеріалу.</span>
+      </div>
+
+      <!-- word popup -->
+      <div id="wordPopup" class="hidden fixed z-50 bg-white border rounded-xl shadow-lg p-3 text-sm" style="border-color:var(--line); min-width:200px;">
+        <div class="flex items-center justify-between gap-3 mb-1">
+          <span id="popupWord" class="font-semibold font-display text-base"></span>
+          <button id="popupSpeak" class="text-xs px-2 py-1 rounded bg-stone-100 hover:bg-stone-200">🔊 звук</button>
+        </div>
+        <div id="popupTranslation" class="text-stone-500 text-sm">…</div>
+      </div>
+
+      <!-- playback controls -->
+      <div class="flex items-center gap-3 mt-4">
+        <button id="playBtn" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-2" style="background:var(--teal)">
+          <span>▶</span> Відтворити
+        </button>
+        <button id="pauseBtn" class="px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Пауза</button>
+        <button id="stopBtn" class="px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Стоп</button>
+        <div id="playerWave" class="wave ml-2"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      </div>
+    </section>
+
+    <!-- STEP 3: RECORDING -->
+    <section class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="font-mono text-xs px-2 py-1 rounded bg-stone-100 text-stone-500">03</span>
+        <h2 class="font-display text-lg font-semibold">Запис вашого повторення</h2>
+      </div>
+
+      <p class="text-sm text-stone-500 mb-4">Натисніть «Почати запис» — після відліку 3…2…1 говоріть слідом за текстом (shadowing). Розпізнавання мовлення працює найкраще у Chrome.</p>
+
+      <div class="flex items-center gap-3 mb-4">
+        <button id="recordBtn" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--coral)">🎙 Почати запис</button>
+        <button id="recordStopBtn" class="hidden px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Завершити запис</button>
+        <span id="recStatus" class="text-sm text-stone-500 font-mono"></span>
+      </div>
+
+      <div id="countdownWrap" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+        <div class="countdown-num text-white" id="countdownNum">3</div>
+      </div>
+
+      <div id="liveTranscript" class="hidden border rounded-xl p-3 text-sm text-stone-500 mb-2" style="border-color:var(--line)"></div>
+
+      <!-- RESULT -->
+      <div id="resultBlock" class="hidden fade-in mt-5 pt-5 border-t" style="border-color:var(--line)">
+        <div class="flex items-center gap-4 mb-4">
+          <div class="font-display text-4xl font-semibold" id="accuracyScore">0%</div>
+          <div class="flex-1">
+            <div class="text-sm text-stone-500 mb-1">Точність відтворення тексту</div>
+            <div class="w-full barbg rounded-full h-2">
+              <div id="accuracyBar" class="bar-fill h-2 rounded-full" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-4 text-xs text-stone-500 mb-3">
+          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#e3f2e8;border:1px solid var(--green)"></span>вимовлено правильно</span>
+          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#faf0da;border:1px solid var(--amber)"></span>неточно / запнуто</span>
+          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#fbe7e3;border:1px solid var(--coral)"></span>пропущено / помилка</span>
+        </div>
+        <div id="diffDisplay" class="border rounded-xl p-4 leading-relaxed" style="border-color:var(--line); background:var(--paper)"></div>
+
+        <!-- Groq feedback -->
+        <div class="mt-5 border-t pt-4" style="border-color:var(--line)">
+          <details>
+            <summary class="cursor-pointer text-sm font-medium text-stone-600">Розширений AI-фідбек про просодію (опціонально, потрібен безкоштовний Groq API ключ)</summary>
+            <div class="mt-3 space-y-2">
+              <input id="groqKey" type="password" placeholder="gsk_... (ваш безкоштовний Groq API ключ, зберігається лише у вашому браузері)"
+                class="w-full border rounded-lg px-3 py-2 text-sm" style="border-color:var(--line)">
+              <p class="text-xs text-stone-400">Ключ можна безкоштовно отримати на console.groq.com. Він зберігається тільки локально у вашому браузері й ніколи нікуди не надсилається, окрім прямого запиту до Groq API.</p>
+              <button id="groqFeedbackBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">Отримати фідбек</button>
+              <div id="groqResult" class="text-sm text-stone-700 whitespace-pre-wrap mt-2"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- RIGHT: history sidebar -->
+  <aside class="space-y-4">
+    <div class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
+      <h3 class="font-display text-base font-semibold mb-3">Історія спроб</h3>
+      <p class="text-xs text-stone-400 mb-3">Для поточного завантаженого тексту. Зберігається локально у вашому браузері.</p>
+      <div id="historyList" class="space-y-2 text-sm">
+        <p class="text-stone-400 text-xs">Спроб ще немає.</p>
+      </div>
+      <button id="clearHistoryBtn" class="text-xs text-stone-400 hover:text-coral mt-3 underline">очистити історію цього тексту</button>
+    </div>
+
+    <div class="bg-white rounded-2xl border p-5 text-xs text-stone-500 leading-relaxed" style="border-color:var(--line)">
+      <h3 class="font-display text-base font-semibold mb-2 text-ink">Як це працює</h3>
+      <ol class="list-decimal list-inside space-y-1">
+        <li>Завантажте текст (свій, з YouTube або демо).</li>
+        <li>Прослухайте зі швидкістю, зручною для рівня.</li>
+        <li>Натисніть слово — почуєте вимову й переклад.</li>
+        <li>Запишіть себе, повторюючи слідом за диктором.</li>
+        <li>Отримайте оцінку та порівняйте прогрес у часі.</li>
+      </ol>
+    </div>
+  </aside>
+</main>
+
+<footer class="max-w-6xl mx-auto px-5 py-8 text-xs text-stone-400">
+  Shadow · безкоштовний тренажер вимови. Усі дані (тексти, історія, ключ Groq) зберігаються лише у вашому браузері (localStorage).
+</footer>
+
+<script>
+/* ============ STATE ============ */
+let currentText = "";
+let sentences = [];
+let currentChunk = 0;
+let mode = "full";
+let rate = 1.0;
+let voices = [];
+let selectedVoice = null;
+let utterance = null;
+let isSpeaking = false;
+let recognition = null;
+let isRecording = false;
+let recognizedTranscript = "";
+
+/* ============ DEMO TEXTS ============ */
+const DEMO_TEXTS = {
+  A2: "My name is Anna. I live in a small city with my family. Every morning I wake up at seven o'clock. I have breakfast and then I go to school by bus. My favorite subject is art. After school, I like to play with my friends in the park. In the evening, we have dinner together and talk about our day.",
+  B1: "Last summer, my friends and I decided to travel to the mountains for a week. We packed our bags carefully, because the weather can change very quickly up there. On the first day, it rained heavily, so we stayed in a small cabin and played card games. However, the next morning the sky was clear, and we finally went hiking to the top of the hill. The view from there was absolutely amazing, and we took a lot of photos to remember that moment.",
+  B2: "In recent years, remote work has become far more common than it used to be, largely due to advances in technology and changes in how companies think about productivity. While many employees appreciate the flexibility of working from home, others argue that it can lead to feelings of isolation and make it harder to separate professional life from personal life. Employers, meanwhile, are still trying to figure out the right balance between trust and supervision, especially when teams are spread across different time zones.",
+  C1: "The rapid pace of technological change has prompted a great deal of debate about its long-term implications for the labour market. Proponents of automation argue that, historically, technological disruption has ultimately created more opportunities than it has destroyed, pointing to previous industrial revolutions as evidence. Critics, however, contend that the scale and speed of the current transformation, driven largely by artificial intelligence, may not follow the same pattern, potentially displacing entire categories of work before new ones have had time to emerge."
+};
+
+/* ============ UTILS ============ */
+function splitSentences(text){
+  const raw = text.match(/[^.!?]+[.!?]*/g) || [text];
+  return raw.map(s=>s.trim()).filter(Boolean);
+}
+function normalizeWord(w){
+  return (w||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^\p{L}\p{N}'-]/gu,"");
+}
+function simpleHash(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++){ h = (Math.imul(31,h) + str.charCodeAt(i))|0; }
+  return "t_" + Math.abs(h);
+}
+function levenshtein(a,b){
+  const m=a.length, n=b.length;
+  if(!m) return n; if(!n) return m;
+  const dp = Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j-1],dp[i-1][j],dp[i][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+/* ============ TEXT LOADING ============ */
+function loadText(text){
+  currentText = text.trim();
+  sentences = splitSentences(currentText);
+  currentChunk = 0;
+  document.getElementById("resultBlock").classList.add("hidden");
+  renderText();
+  renderChunkNav();
+  renderHistory();
+}
+
+function renderText(){
+  const container = document.getElementById("textDisplay");
+  const source = mode === "chunk" ? (sentences[currentChunk] || "") : currentText;
+  if(!source){
+    container.innerHTML = '<span class="text-stone-400 text-sm">Текст з\'явиться тут після завантаження матеріалу.</span>';
+    return;
+  }
+  // tokenize keeping separators
+  const tokens = source.split(/(\s+)/);
+  let html = "";
+  tokens.forEach((tok, i)=>{
+    if(/^\s+$/.test(tok)){ html += tok; return; }
+    if(!tok) return;
+    html += `<span class="word" data-idx="${i}" data-raw="${encodeURIComponent(tok)}">${tok}</span>`;
+  });
+  container.innerHTML = html;
+}
+
+function renderChunkNav(){
+  const nav = document.getElementById("chunkNav");
+  if(mode === "chunk" && sentences.length){
+    nav.classList.remove("hidden");
+    nav.classList.add("flex");
+    document.getElementById("chunkIndicator").textContent = `${currentChunk+1} / ${sentences.length}`;
+  } else {
+    nav.classList.add("hidden");
+    nav.classList.remove("flex");
+  }
+}
+
+/* ============ TABS ============ */
+document.querySelectorAll("#sourceTabs button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("#sourceTabs button").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    ["manual","youtube","demo"].forEach(t=>{
+      document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab);
+    });
+  });
+});
+
+document.getElementById("loadManualBtn").addEventListener("click", ()=>{
+  const val = document.getElementById("manualText").value;
+  if(val.trim().length < 3){ alert("Будь ласка, введіть текст."); return; }
+  loadText(val);
+});
+
+document.querySelectorAll(".level-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".level-btn").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    loadText(DEMO_TEXTS[btn.dataset.level]);
+  });
+});
+
+/* ============ YOUTUBE SUBTITLES (best-effort) ============ */
+function extractYouTubeId(url){
+  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+document.getElementById("ytFetchBtn").addEventListener("click", async ()=>{
+  const url = document.getElementById("ytUrl").value.trim();
+  const status = document.getElementById("ytStatus");
+  const id = extractYouTubeId(url);
+  if(!id){ status.textContent = "Не вдалося розпізнати посилання на відео."; return; }
+  status.textContent = "Спроба отримати субтитри...";
+  const proxy = "https://api.allorigins.win/raw?url=";
+  const target = encodeURIComponent(`https://video.google.com/timedtext?lang=en&v=${id}`);
+  try{
+    const res = await fetch(proxy + target);
+    const xml = await res.text();
+    if(!xml || !xml.includes("<text")){
+      throw new Error("empty");
+    }
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, "text/xml");
+    const nodes = [...doc.getElementsByTagName("text")];
+    const text = nodes.map(n=>{
+      const t = document.createElement("textarea");
+      t.innerHTML = n.textContent;
+      return t.value;
+    }).join(" ").replace(/\s+/g," ").trim();
+    if(!text){ throw new Error("empty2"); }
+    status.textContent = "Субтитри успішно отримано ✓";
+    loadText(text);
+  }catch(e){
+    status.textContent = "Не вдалося автоматично отримати субтитри для цього відео (можливо, вони недоступні або заблоковані CORS). Скопіюйте транскрипт вручну через YouTube і вставте його у вкладку «Свій текст».";
+  }
+});
+
+/* ============ VOICES ============ */
+function populateVoices(){
+  voices = speechSynthesis.getVoices();
+  const select = document.getElementById("voiceSelect");
+  if(!voices.length) return;
+  select.innerHTML = "";
+  // preferred language order
+  const preferredLangs = ["en-US","en-GB","de-DE","fr-FR","es-ES","it-IT","uk-UA"];
+  const sorted = [...voices].sort((a,b)=>{
+    const ai = preferredLangs.indexOf(a.lang), bi = preferredLangs.indexOf(b.lang);
+    return (ai===-1?99:ai) - (bi===-1?99:bi);
+  });
+  sorted.forEach((v,i)=>{
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `${v.name} (${v.lang})`;
+    select.appendChild(opt);
+  });
+  select.onchange = ()=>{ selectedVoice = sorted[select.value]; };
+  selectedVoice = sorted[0];
+  select.value = 0;
+}
+speechSynthesis.onvoiceschanged = populateVoices;
+populateVoices();
+
+/* ============ PLAYBACK ============ */
+document.querySelectorAll(".rate-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".rate-btn").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    rate = parseFloat(btn.dataset.rate);
+  });
+});
+document.querySelectorAll(".mode-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".mode-btn").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    mode = btn.dataset.mode;
+    renderText();
+    renderChunkNav();
+  });
+});
+document.getElementById("prevChunk").addEventListener("click", ()=>{
+  if(currentChunk>0){ currentChunk--; renderText(); renderChunkNav(); }
+});
+document.getElementById("nextChunk").addEventListener("click", ()=>{
+  if(currentChunk < sentences.length-1){ currentChunk++; renderText(); renderChunkNav(); }
+});
+
+function speakSource(text, onBoundaryWordIndex, onEnd){
+  speechSynthesis.cancel();
+  utterance = new SpeechSynthesisUtterance(text);
+  if(selectedVoice) utterance.voice = selectedVoice;
+  utterance.rate = rate;
+  utterance.onstart = ()=>{
+    isSpeaking = true;
+    document.getElementById("playerWave").classList.add("active");
+  };
+  utterance.onboundary = (e)=>{
+    if(e.name === "word" || e.charIndex !== undefined){
+      onBoundaryWordIndex(e.charIndex);
+    }
+  };
+  utterance.onend = ()=>{
+    isSpeaking = false;
+    document.getElementById("playerWave").classList.remove("active");
+    document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+    if(onEnd) onEnd();
+  };
+  speechSynthesis.speak(utterance);
+}
+
+document.getElementById("playBtn").addEventListener("click", ()=>{
+  const source = mode === "chunk" ? (sentences[currentChunk] || "") : currentText;
+  if(!source){ alert("Спочатку завантажте текст."); return; }
+  const container = document.getElementById("textDisplay");
+  speakSource(source, (charIndex)=>{
+    document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+    const spans = [...container.querySelectorAll(".word")];
+    // find span whose position in source text roughly matches charIndex
+    let acc = 0;
+    for(const tok of source.split(/(\s+)/)){
+      if(/^\s+$/.test(tok)){ acc += tok.length; continue; }
+      if(charIndex >= acc && charIndex < acc + tok.length + 1){
+        const target = spans.find(s => decodeURIComponent(s.dataset.raw) === tok && !s.classList.contains("active-word"));
+        if(target){ target.classList.add("active-word"); target.scrollIntoView({block:"nearest", behavior:"smooth"}); }
+        break;
+      }
+      acc += tok.length;
+    }
+  });
+});
+document.getElementById("pauseBtn").addEventListener("click", ()=>{
+  if(speechSynthesis.speaking && !speechSynthesis.paused){ speechSynthesis.pause(); }
+  else if(speechSynthesis.paused){ speechSynthesis.resume(); }
+});
+document.getElementById("stopBtn").addEventListener("click", ()=>{
+  speechSynthesis.cancel();
+  document.getElementById("playerWave").classList.remove("active");
+  document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+});
+
+/* ============ WORD CLICK DICTIONARY ============ */
+document.getElementById("textDisplay").addEventListener("click", async (e)=>{
+  const el = e.target.closest(".word");
+  if(!el) return;
+  const raw = decodeURIComponent(el.dataset.raw);
+  const clean = raw.replace(/[^\p{L}\p{N}'-]/gu,"");
+  if(!clean) return;
+  const popup = document.getElementById("wordPopup");
+  const rect = el.getBoundingClientRect();
+  popup.style.top = (window.scrollY + rect.bottom + 6) + "px";
+  popup.style.left = Math.min(window.scrollX + rect.left, window.innerWidth - 240) + "px";
+  popup.classList.remove("hidden");
+  document.getElementById("popupWord").textContent = clean;
+  document.getElementById("popupTranslation").textContent = "Переклад завантажується...";
+  document.getElementById("popupSpeak").onclick = ()=>{
+    const u = new SpeechSynthesisUtterance(clean);
+    if(selectedVoice) u.voice = selectedVoice;
+    u.rate = 0.9;
+    speechSynthesis.speak(u);
+  };
+  const srcLang = (selectedVoice ? selectedVoice.lang.split("-")[0] : "en");
+  try{
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean)}&langpair=${srcLang}|uk`);
+    const data = await res.json();
+    document.getElementById("popupTranslation").textContent = data?.responseData?.translatedText || "Переклад недоступний.";
+  }catch(err){
+    document.getElementById("popupTranslation").textContent = "Переклад недоступний (немає з'єднання).";
+  }
+});
+document.addEventListener("click", (e)=>{
+  const popup = document.getElementById("wordPopup");
+  if(!popup.contains(e.target) && !e.target.closest(".word")){
+    popup.classList.add("hidden");
+  }
+});
+
+/* ============ RECORDING & RECOGNITION ============ */
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function startCountdownThenRecord(){
+  const wrap = document.getElementById("countdownWrap");
+  const num = document.getElementById("countdownNum");
+  wrap.classList.remove("hidden");
+  wrap.style.display = "flex";
+  let n = 3;
+  num.textContent = n;
+  const interval = setInterval(()=>{
+    n--;
+    if(n>0){ num.textContent = n; }
+    else{
+      clearInterval(interval);
+      wrap.classList.add("hidden");
+      wrap.style.display = "none";
+      actuallyStartRecording();
+    }
+  },1000);
+}
+
+function actuallyStartRecording(){
+  if(!SpeechRecognitionCtor){
+    alert("Ваш браузер не підтримує розпізнавання мовлення. Спробуйте Google Chrome.");
+    return;
+  }
+  recognition = new SpeechRecognitionCtor();
+  recognition.lang = selectedVoice ? selectedVoice.lang : "en-US";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognizedTranscript = "";
+  const live = document.getElementById("liveTranscript");
+  live.classList.remove("hidden");
+  live.textContent = "Слухаю...";
+
+  recognition.onresult = (event)=>{
+    let interim = "", final = "";
+    for(let i=0;i<event.results.length;i++){
+      const r = event.results[i];
+      if(r.isFinal) final += r[0].transcript + " ";
+      else interim += r[0].transcript;
+    }
+    recognizedTranscript = (final + interim).trim();
+    live.textContent = recognizedTranscript || "Слухаю...";
+  };
+  recognition.onerror = (e)=>{
+    document.getElementById("recStatus").textContent = "Помилка розпізнавання: " + e.error;
+  };
+  recognition.onend = ()=>{
+    if(isRecording){
+      // browser stopped on its own (silence timeout); restart if still recording
+      try{ recognition.start(); }catch(e){}
+    }
+  };
+  recognition.start();
+  isRecording = true;
+  document.getElementById("recordBtn").classList.add("hidden");
+  document.getElementById("recordStopBtn").classList.remove("hidden");
+  document.getElementById("recStatus").textContent = "🔴 запис триває...";
+}
+
+document.getElementById("recordBtn").addEventListener("click", startCountdownThenRecord);
+
+document.getElementById("recordStopBtn").addEventListener("click", ()=>{
+  isRecording = false;
+  if(recognition){ recognition.stop(); }
+  document.getElementById("recordBtn").classList.remove("hidden");
+  document.getElementById("recordStopBtn").classList.add("hidden");
+  document.getElementById("recStatus").textContent = "Запис завершено.";
+  runComparison();
+});
+
+/* ============ COMPARISON / SCORING ============ */
+function alignWords(origWords, saidWords){
+  const n = origWords.length, m = saidWords.length;
+  const dp = Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=1;i<=n;i++){
+    for(let j=1;j<=m;j++){
+      dp[i][j] = origWords[i-1] === saidWords[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  // backtrack matched indices in original
+  const matchedOrig = new Set();
+  const matchedSaid = new Set();
+  let i=n, j=m;
+  while(i>0 && j>0){
+    if(origWords[i-1] === saidWords[j-1]){
+      matchedOrig.add(i-1); matchedSaid.add(j-1);
+      i--; j--;
+    } else if(dp[i-1][j] >= dp[i][j-1]){ i--; }
+    else{ j--; }
+  }
+  return {matchedOrig, matchedSaid};
+}
+
+function runComparison(){
+  if(!currentText){ return; }
+  const source = mode === "chunk" ? sentences[currentChunk] : currentText;
+  const rawOrigTokens = source.split(/\s+/).filter(Boolean);
+  const origWords = rawOrigTokens.map(normalizeWord);
+  const saidTokensRaw = recognizedTranscript.split(/\s+/).filter(Boolean);
+  const saidWords = saidTokensRaw.map(normalizeWord);
+
+  const {matchedOrig, matchedSaid} = alignWords(origWords, saidWords);
+  const unmatchedSaid = saidWords.filter((_,idx)=>!matchedSaid.has(idx));
+
+  let display = "";
+  let correctCount = 0;
+  rawOrigTokens.forEach((tok, idx)=>{
+    const norm = origWords[idx];
+    if(matchedOrig.has(idx)){
+      correctCount++;
+      display += `<span class="word g-correct">${tok}</span> `;
+    } else {
+      // check partial: close to some unmatched said word
+      const close = unmatchedSaid.some(sw => sw.length>2 && levenshtein(norm, sw) <= Math.max(1, Math.floor(norm.length*0.3)));
+      display += `<span class="word ${close ? 'g-partial' : 'g-wrong'}">${tok}</span> `;
+    }
+  });
+
+  const accuracy = rawOrigTokens.length ? Math.round((correctCount / rawOrigTokens.length) * 100) : 0;
+
+  document.getElementById("diffDisplay").innerHTML = display;
+  document.getElementById("accuracyScore").textContent = accuracy + "%";
+  document.getElementById("accuracyBar").style.width = accuracy + "%";
+  document.getElementById("resultBlock").classList.remove("hidden");
+  document.getElementById("resultBlock").scrollIntoView({behavior:"smooth", block:"nearest"});
+
+  saveAttempt(accuracy);
+}
+
+/* ============ HISTORY (localStorage) ============ */
+function historyKey(){ return simpleHash(currentText); }
+function loadAllHistory(){
+  try{ return JSON.parse(localStorage.getItem("shadow_history_v1") || "{}"); }catch(e){ return {}; }
+}
+function saveAttempt(accuracy){
+  const all = loadAllHistory();
+  const key = historyKey();
+  if(!all[key]) all[key] = {snippet: currentText.slice(0,60), attempts:[]};
+  all[key].attempts.push({date: new Date().toLocaleString("uk-UA"), accuracy});
+  localStorage.setItem("shadow_history_v1", JSON.stringify(all));
+  renderHistory();
+}
+function renderHistory(){
+  const all = loadAllHistory();
+  const key = historyKey();
+  const list = document.getElementById("historyList");
+  const entry = all[key];
+  if(!entry || !entry.attempts.length){
+    list.innerHTML = '<p class="text-stone-400 text-xs">Спроб ще немає.</p>';
+    return;
+  }
+  list.innerHTML = entry.attempts.map((a,i)=>`
+    <div class="flex items-center justify-between gap-2">
+      <span class="text-stone-500 text-xs">Спроба ${i+1} · ${a.date}</span>
+      <span class="font-mono text-xs font-semibold" style="color:${a.accuracy>=80?'var(--green)':a.accuracy>=60?'var(--amber)':'var(--coral)'}">${a.accuracy}%</span>
+    </div>
+  `).join("");
+}
+document.getElementById("clearHistoryBtn").addEventListener("click", ()=>{
+  const all = loadAllHistory();
+  delete all[historyKey()];
+  localStorage.setItem("shadow_history_v1", JSON.stringify(all));
+  renderHistory();
+});
+
+/* ============ GROQ FEEDBACK (optional) ============ */
+const savedKey = localStorage.getItem("shadow_groq_key");
+if(savedKey) document.getElementById("groqKey").value = savedKey;
+
+document.getElementById("groqFeedbackBtn").addEventListener("click", async ()=>{
+  const key = document.getElementById("groqKey").value.trim();
+  const resultBox = document.getElementById("groqResult");
+  if(!key){ resultBox.textContent = "Введіть ваш безкоштовний Groq API ключ."; return; }
+  localStorage.setItem("shadow_groq_key", key);
+  resultBox.textContent = "Аналізую...";
+  const source = mode === "chunk" ? sentences[currentChunk] : currentText;
+  const prompt = `Ти — викладач вимови та просодії. Ось оригінальний текст для shadowing-тренування:\n"${source}"\n\nОсь текст, розпізнаний з мовлення студента (може містити помилки розпізнавання):\n"${recognizedTranscript}"\n\nТочність співпадіння слів: ${document.getElementById("accuracyScore").textContent}.\n\nДай короткий (4-6 речень) фідбек українською мовою про ймовірні проблеми з вимовою, ритмом, паузами та інтонацією студента, враховуючи різницю між оригіналом і розпізнаним текстом. Будь конкретним і підтримуючим, дай 1-2 практичні поради.`;
+  try{
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer " + key
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [{role:"user", content: prompt}],
+        max_tokens: 400
+      })
+    });
+    const data = await res.json();
+    if(data.error){ resultBox.textContent = "Помилка Groq API: " + data.error.message; return; }
+    resultBox.textContent = data.choices?.[0]?.message?.content || "Не вдалося отримати відповідь.";
+  }catch(e){
+    resultBox.textContent = "Не вдалося зв'язатися з Groq API. Перевірте ключ та з'єднання з інтернетом.";
+  }
+});
+</script>
+</body>
+</html>
