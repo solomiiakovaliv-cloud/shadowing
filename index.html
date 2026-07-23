@@ -810,27 +810,58 @@ document.getElementById("ytFetchBtn").addEventListener("click", async ()=>{
   document.getElementById("youtubeMediaControl").classList.remove("hidden");
 });
 
+function extractJsonArrayAfter(html, key){
+  const marker = `"${key}":`;
+  const idx = html.indexOf(marker);
+  if(idx === -1) return null;
+  let i = idx + marker.length;
+  while(html[i] === " ") i++;
+  if(html[i] !== "[") return null;
+  const start = i;
+  let depth = 0;
+  for(; i<html.length; i++){
+    const ch = html[i];
+    if(ch === '"'){
+      i++;
+      while(i<html.length && html[i] !== '"'){
+        if(html[i] === "\\") i++;
+        i++;
+      }
+      continue;
+    }
+    if(ch === "["){ depth++; }
+    else if(ch === "]"){ depth--; if(depth === 0){ i++; break; } }
+  }
+  return html.slice(start, i);
+}
+
 async function fetchYoutubeCaptionsXml(id){
   const proxy = "https://api.allorigins.win/raw?url=";
-  // step 1: fetch the actual video page and find the real, video-specific caption track URL
+
+  // attempt 1: lightweight direct captions endpoint (fast, works for many standard-caption videos)
+  try{
+    const res = await fetch(proxy + encodeURIComponent(`https://www.youtube.com/api/timedtext?lang=en&v=${id}`));
+    const xml = await res.text();
+    if(xml && xml.includes("<text")) return xml;
+  }catch(e){ /* fall through to attempt 2 */ }
+
+  // attempt 2: read the video's own watch page and extract its real, video-specific caption track URL
   const pageRes = await fetch(proxy + encodeURIComponent(`https://www.youtube.com/watch?v=${id}`));
   const html = await pageRes.text();
-  const match = html.match(/"captionTracks":(\[[^\]]*\])/);
-  if(!match) throw new Error("no caption tracks listed for this video");
+  const tracksJson = extractJsonArrayAfter(html, "captionTracks");
+  if(!tracksJson) throw new Error("no caption tracks listed for this video");
   let tracks;
-  try{ tracks = JSON.parse(match[1].replace(/\\u0026/g, "&")); }
+  try{ tracks = JSON.parse(tracksJson.replace(/\\u0026/g, "&")); }
   catch(e){ throw new Error("couldn't parse caption track list"); }
   if(!tracks || !tracks.length) throw new Error("no caption tracks available");
-  // prefer an English track (manually created or auto-generated), otherwise take the first available
   const track = tracks.find(t=>t.languageCode && t.languageCode.toLowerCase().startsWith("en")) || tracks[0];
   const baseUrl = (track.baseUrl || "").replace(/\\u0026/g, "&");
   if(!baseUrl) throw new Error("caption track has no url");
 
-  // step 2: fetch that video's own caption XML
   const capRes = await fetch(proxy + encodeURIComponent(baseUrl));
-  const xml = await capRes.text();
-  if(!xml || !xml.includes("<text")) throw new Error("empty captions xml");
-  return xml;
+  const xml2 = await capRes.text();
+  if(!xml2 || !xml2.includes("<text")) throw new Error("empty captions xml");
+  return xml2;
 }
 
 function stopYoutubeHighlightLoop(){
@@ -1161,23 +1192,36 @@ document.getElementById("stopBtn").addEventListener("click", ()=>{
 
 /* ============ WORD CLICK DICTIONARY ============ */
 async function fetchTranslation(word, targetLang, srcLang){
-  // primary: MyMemory
+  // 1) MyMemory (direct, usually CORS-friendly)
   try{
     const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=${srcLang}|${targetLang}`);
     const data = await res.json();
     const text = data?.responseData?.translatedText || "";
     const looksLikeWarning = /MYMEMORY WARNING|INVALID|PLEASE SELECT/i.test(text);
     if(text && !looksLikeWarning) return text;
-  }catch(e){ /* fall through to backup */ }
+  }catch(e){ /* try next */ }
 
-  // backup: Lingva (free, public Google Translate mirror, no key needed)
+  // 2) Lingva (free public Google Translate mirror, direct)
   try{
     const res2 = await fetch(`https://lingva.ml/api/v1/${srcLang}/${targetLang}/${encodeURIComponent(word)}`);
     const data2 = await res2.json();
     if(data2?.translation) return data2.translation;
-  }catch(e){ /* both failed */ }
+  }catch(e){ /* try next */ }
 
-  return "Translation unavailable.";
+  // 3) Google Translate's public endpoint, routed through a CORS proxy so it works
+  //    regardless of the browser's own CORS restrictions (same proxy used for YouTube captions)
+  try{
+    const proxy = "https://api.allorigins.win/raw?url=";
+    const gt = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${srcLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(word)}`;
+    const res3 = await fetch(proxy + encodeURIComponent(gt));
+    const data3 = await res3.json();
+    if(Array.isArray(data3) && Array.isArray(data3[0])){
+      const joined = data3[0].map(seg=>seg[0]).join("");
+      if(joined) return joined;
+    }
+  }catch(e){ /* all three failed */ }
+
+  return "Translation unavailable — all free translation services failed to respond. Try again, or check your connection.";
 }
 
 document.getElementById("textDisplay").addEventListener("click", async (e)=>{
