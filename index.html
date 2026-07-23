@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shadow — тренажер вимови та просодії</title>
+<title>Shadow — pronunciation & prosody trainer</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -28,7 +28,6 @@
   .font-display{font-family:'Fraunces',serif;}
   .font-mono{font-family:'JetBrains Mono',monospace;}
 
-  /* signature waveform */
   .wave{display:flex;align-items:flex-end;gap:3px;height:28px;}
   .wave span{
     display:block;width:3px;background:var(--teal);border-radius:2px;
@@ -87,6 +86,22 @@
 
   .barbg{background:var(--paper-2);}
   .bar-fill{background:linear-gradient(90deg,var(--teal),var(--teal-dark));}
+
+  .toast{
+    position:fixed; bottom:20px; right:20px; z-index:60;
+    background:var(--ink); color:var(--paper);
+    padding:10px 16px; border-radius:10px; font-size:13px;
+    opacity:0; transform:translateY(8px);
+    transition:opacity .25s ease, transform .25s ease;
+    pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+
+  @media print{
+    body *{ visibility:hidden; }
+    #printArea, #printArea *{ visibility:visible; }
+    #printArea{ position:absolute; left:0; top:0; width:100%; }
+  }
 </style>
 </head>
 <body class="min-h-screen">
@@ -98,12 +113,10 @@
       <div id="headerWave" class="wave"><span></span><span></span><span></span><span></span><span></span><span></span></div>
       <div>
         <h1 class="font-display text-2xl font-semibold tracking-tight">Shadow</h1>
-        <p class="text-xs text-stone-500 -mt-1">тренажер вимови та просодії · shadowing</p>
+        <p class="text-xs text-stone-500 -mt-1">pronunciation & prosody trainer · shadowing method</p>
       </div>
     </div>
-    <div class="text-xs text-stone-500 hidden sm:block max-w-xs text-right">
-      Повністю безкоштовно · працює у браузері · нічого не завантажується на сервер
-    </div>
+    <div class="text-xs text-stone-500 hidden sm:block max-w-xs text-right"></div>
   </div>
 </header>
 
@@ -116,40 +129,71 @@
     <section class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
       <div class="flex items-center gap-2 mb-4">
         <span class="font-mono text-xs px-2 py-1 rounded bg-stone-100 text-stone-500">01</span>
-        <h2 class="font-display text-lg font-semibold">Матеріал для тренування</h2>
+        <h2 class="font-display text-lg font-semibold">Training material</h2>
       </div>
 
       <div class="flex flex-wrap gap-2 mb-4" id="sourceTabs">
-        <button data-tab="manual" class="chip on px-3 py-1.5 rounded-full text-sm">Свій текст</button>
+        <button data-tab="manual" class="chip on px-3 py-1.5 rounded-full text-sm">Your own text</button>
         <button data-tab="youtube" class="chip px-3 py-1.5 rounded-full text-sm">YouTube / TED</button>
-        <button data-tab="demo" class="chip px-3 py-1.5 rounded-full text-sm">Демо-тексти</button>
+        <button data-tab="upload" class="chip px-3 py-1.5 rounded-full text-sm">Upload audio / video</button>
+        <button data-tab="demo" class="chip px-3 py-1.5 rounded-full text-sm">Demo texts</button>
       </div>
 
       <!-- manual -->
       <div id="tab-manual">
-        <textarea id="manualText" rows="6" placeholder="Вставте або надрукуйте текст для тренування вимови..."
+        <textarea id="manualText" rows="6" placeholder="Paste or type the text you want to practice..."
           class="w-full border rounded-xl p-3 text-sm focus:outline-none focus:ring-2" style="border-color:var(--line);"></textarea>
-        <button id="loadManualBtn" class="mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">Завантажити текст</button>
+        <button id="loadManualBtn" class="mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">Load text</button>
       </div>
 
       <!-- youtube -->
       <div id="tab-youtube" class="hidden space-y-3">
         <div class="flex gap-2">
           <input id="ytUrl" type="text" placeholder="https://www.youtube.com/watch?v=..." class="flex-1 border rounded-xl px-3 py-2 text-sm" style="border-color:var(--line)">
-          <button id="ytFetchBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap" style="background:var(--teal)">Отримати субтитри</button>
+          <button id="ytFetchBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap" style="background:var(--teal)">Load video</button>
         </div>
         <p id="ytStatus" class="text-xs text-stone-500"></p>
-        <p class="text-xs text-stone-400">Примітка: автоматичне отримання субтитрів залежить від того, чи є вони публічно доступні для відео, і може не спрацювати в деяких браузерах через обмеження CORS. Якщо не вдалось — скопіюйте транскрипт вручну (кнопка "..." → "Показати транскрипт" під відео на YouTube) і вставте його на вкладці «Свій текст».</p>
+        <p class="text-xs text-stone-400">This embeds the real YouTube video (via YouTube's own player) so you hear the actual speaker's voice — not synthetic speech. Captions are fetched automatically when available, to sync highlighting; if they're not available, copy the transcript manually ("..." → "Show transcript" under the video) and paste it into the "Your own text" tab, then still use the "YouTube video" voice engine below for real audio.</p>
+      </div>
+
+      <!-- upload -->
+      <div id="tab-upload" class="hidden space-y-3">
+        <input id="mediaFile" type="file" accept="audio/*,video/*" class="text-sm">
+        <div id="mediaPreviewWrap" class="hidden"></div>
+        <p class="text-xs text-stone-400">Your own recording or any audio/video file works. Playing back a real human voice gives students natural prosody that synthetic voices can't fully match.</p>
+
+        <div class="border-t pt-3" style="border-color:var(--line)">
+          <label class="text-xs text-stone-500 block mb-1">Transcript text (paste it yourself, or auto-transcribe below)</label>
+          <textarea id="uploadText" rows="4" placeholder="Paste the matching transcript here, or use auto-transcription..." class="w-full border rounded-xl p-3 text-sm" style="border-color:var(--line)"></textarea>
+          <div class="flex flex-wrap gap-2 mt-2">
+            <button id="loadUploadTextBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">Load this transcript</button>
+            <button id="transcribeBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--teal)">Auto-transcribe (Groq Whisper, needs free key)</button>
+          </div>
+          <p id="transcribeStatus" class="text-xs text-stone-500 mt-2"></p>
+          <p class="text-xs text-stone-400 mt-1">Auto-transcription uses the same free Groq API key as the AI feedback feature below (get one at console.groq.com). With a key, word-level timing is captured too, enabling karaoke highlighting synced to your real audio.</p>
+        </div>
       </div>
 
       <!-- demo -->
       <div id="tab-demo" class="hidden">
-        <p class="text-sm text-stone-500 mb-3">Оберіть рівень — текст згенерується автоматично.</p>
+        <p class="text-sm text-stone-500 mb-3">Pick a level, then choose a text.</p>
         <div class="flex gap-2 flex-wrap">
           <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="A2">A2</button>
           <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="B1">B1</button>
+          <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="B1+">B1+</button>
           <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="B2">B2</button>
+          <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="B2+">B2+</button>
           <button class="level-btn chip px-4 py-2 rounded-full text-sm font-medium" data-level="C1">C1</button>
+        </div>
+        <div id="demoTextPicker" class="hidden flex-wrap gap-2 mt-3"></div>
+        <div class="mt-4 pt-4 border-t" style="border-color:var(--line)">
+          <p class="text-xs text-stone-500 mb-2">Looking for real speech to shadow? These searches turn up clear, well-paced talks that work well for practice:</p>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <a href="https://www.youtube.com/results?search_query=TED+talk+easy+english+for+beginners" target="_blank" rel="noopener" class="chip px-3 py-1.5 rounded-full">A2 / B1 talks →</a>
+            <a href="https://www.youtube.com/results?search_query=TED+talk+intermediate+english+learners" target="_blank" rel="noopener" class="chip px-3 py-1.5 rounded-full">B1 / B2 talks →</a>
+            <a href="https://www.youtube.com/results?search_query=TED+talk+advanced+english+vocabulary" target="_blank" rel="noopener" class="chip px-3 py-1.5 rounded-full">B2 / C1 talks →</a>
+            <a href="https://www.ted.com/talks" target="_blank" rel="noopener" class="chip px-3 py-1.5 rounded-full">Browse TED.com →</a>
+          </div>
         </div>
       </div>
     </section>
@@ -158,17 +202,47 @@
     <section class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
       <div class="flex items-center gap-2 mb-4">
         <span class="font-mono text-xs px-2 py-1 rounded bg-stone-100 text-stone-500">02</span>
-        <h2 class="font-display text-lg font-semibold">Прослуховування (Shadowing)</h2>
+        <h2 class="font-display text-lg font-semibold">Listening (Shadowing)</h2>
+      </div>
+
+      <!-- engine switch -->
+      <div class="mb-4">
+        <label class="text-xs text-stone-500 block mb-1">Voice engine</label>
+        <div class="flex gap-1 flex-wrap">
+          <button data-engine="browser" class="engine-btn chip on px-3 py-1.5 rounded-lg text-sm">Browser voice (free)</button>
+          <button data-engine="upload" class="engine-btn chip px-3 py-1.5 rounded-lg text-sm">Your uploaded audio/video (free, real voice)</button>
+          <button data-engine="youtube" class="engine-btn chip px-3 py-1.5 rounded-lg text-sm">YouTube video (free, real voice)</button>
+          <button data-engine="premium" class="engine-btn chip px-3 py-1.5 rounded-lg text-sm">Premium AI voice (optional)</button>
+        </div>
+        <p class="text-xs text-stone-400 mt-1">
+          Browser voices vary a lot in quality. For the best free built-in voices, open this app in <b>Google Chrome</b> or <b>Microsoft Edge</b>. For the most natural prosody of all, use your own uploaded recording or a loaded YouTube video for real human speech.
+        </p>
+      </div>
+      <div id="uploadMediaControl" class="hidden mb-4 p-3 rounded-xl border" style="border-color:var(--line); background:var(--paper)">
+        <p class="text-xs text-stone-500">Using your uploaded file for playback. Go to the "Upload audio / video" tab above to change it.</p>
+      </div>
+      <div id="youtubeMediaControl" class="hidden mb-4 p-3 rounded-xl border" style="border-color:var(--line); background:var(--paper)">
+        <p class="text-xs text-stone-500 mb-2">Playing the actual YouTube video (headphones recommended if you'll also record yourself, so the microphone doesn't pick up the video's own audio). Load a different video on the "YouTube / TED" tab above.</p>
+        <div id="ytPlayerWrap" class="w-full aspect-video rounded-lg overflow-hidden bg-black">
+          <div id="ytPlayerDiv"></div>
+        </div>
+      </div>
+
+      <!-- premium engine panel -->
+      <div id="premiumPanel" class="hidden mb-4 p-3 rounded-xl border" style="border-color:var(--line); background:var(--paper)">
+        <label class="text-xs text-stone-500 block mb-1">Free ElevenLabs API key (optional, for natural neural voice with real prosody)</label>
+        <input id="elevenKey" type="password" placeholder="Paste your free ElevenLabs API key" class="w-full border rounded-lg px-3 py-2 text-sm" style="border-color:var(--line)">
+        <p class="text-xs text-stone-400 mt-1">Get a free key at elevenlabs.io (free tier includes a monthly character quota). Stored only in your browser, used only for direct requests to ElevenLabs.</p>
       </div>
 
       <!-- controls row -->
       <div class="flex flex-wrap gap-4 items-end mb-4">
-        <div>
-          <label class="text-xs text-stone-500 block mb-1">Мова озвучення</label>
+        <div id="browserVoiceControl">
+          <label class="text-xs text-stone-500 block mb-1">Voice / language</label>
           <select id="voiceSelect" class="border rounded-lg px-2 py-1.5 text-sm" style="border-color:var(--line)"></select>
         </div>
         <div>
-          <label class="text-xs text-stone-500 block mb-1">Швидкість</label>
+          <label class="text-xs text-stone-500 block mb-1">Speed</label>
           <div class="flex gap-1" id="rateGroup">
             <button data-rate="0.75" class="rate-btn chip px-3 py-1.5 rounded-lg text-sm">0.75x</button>
             <button data-rate="0.9" class="rate-btn chip px-3 py-1.5 rounded-lg text-sm">0.9x</button>
@@ -176,58 +250,75 @@
           </div>
         </div>
         <div>
-          <label class="text-xs text-stone-500 block mb-1">Режим</label>
+          <label class="text-xs text-stone-500 block mb-1">Mode</label>
           <div class="flex gap-1">
-            <button data-mode="full" class="mode-btn chip on px-3 py-1.5 rounded-lg text-sm">Повний текст</button>
-            <button data-mode="chunk" class="mode-btn chip px-3 py-1.5 rounded-lg text-sm">По реченнях</button>
+            <button data-mode="full" class="mode-btn chip on px-3 py-1.5 rounded-lg text-sm">Full text</button>
+            <button data-mode="chunk" class="mode-btn chip px-3 py-1.5 rounded-lg text-sm">Sentence by sentence</button>
           </div>
         </div>
       </div>
 
       <!-- chunk nav -->
       <div id="chunkNav" class="hidden items-center gap-3 mb-4">
-        <button id="prevChunk" class="px-3 py-1.5 rounded-lg border text-sm" style="border-color:var(--line)">← Назад</button>
+        <button id="prevChunk" class="px-3 py-1.5 rounded-lg border text-sm" style="border-color:var(--line)">← Back</button>
         <span id="chunkIndicator" class="text-sm font-mono text-stone-500">1 / 1</span>
-        <button id="nextChunk" class="px-3 py-1.5 rounded-lg border text-sm" style="border-color:var(--line)">Далі →</button>
+        <button id="nextChunk" class="px-3 py-1.5 rounded-lg border text-sm" style="border-color:var(--line)">Next →</button>
       </div>
 
       <!-- text display -->
-      <div id="textDisplay" class="border rounded-xl p-5 min-h-[140px] leading-relaxed text-lg" style="border-color:var(--line); background:var(--paper)">
-        <span class="text-stone-400 text-sm">Текст з'явиться тут після завантаження матеріалу.</span>
+      <div id="printArea">
+        <div id="textDisplay" class="border rounded-xl p-5 min-h-[140px] leading-relaxed text-lg" style="border-color:var(--line); background:var(--paper)">
+          <span class="text-stone-400 text-sm">Your text will appear here once you load some material.</span>
+        </div>
       </div>
 
       <!-- word popup -->
-      <div id="wordPopup" class="hidden fixed z-50 bg-white border rounded-xl shadow-lg p-3 text-sm" style="border-color:var(--line); min-width:200px;">
+      <div id="wordPopup" class="hidden fixed z-50 bg-white border rounded-xl shadow-lg p-3 text-sm" style="border-color:var(--line); min-width:220px;">
         <div class="flex items-center justify-between gap-3 mb-1">
           <span id="popupWord" class="font-semibold font-display text-base"></span>
-          <button id="popupSpeak" class="text-xs px-2 py-1 rounded bg-stone-100 hover:bg-stone-200">🔊 звук</button>
+          <button id="popupSpeak" class="text-xs px-2 py-1 rounded bg-stone-100 hover:bg-stone-200">🔊 play</button>
         </div>
-        <div id="popupTranslation" class="text-stone-500 text-sm">…</div>
+        <div id="popupTranslation" class="text-stone-500 text-sm mb-2">…</div>
+        <button id="popupAddVocab" class="text-xs px-2 py-1 rounded bg-teal-50 text-teal-700 border mb-2" style="border-color:var(--line)">+ Add to my vocabulary</button>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-stone-400">Translate to</label>
+          <select id="translateLang" class="text-xs border rounded px-1 py-0.5" style="border-color:var(--line)">
+            <option value="uk">Ukrainian</option>
+            <option value="en">English</option>
+            <option value="de">German</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="pl">Polish</option>
+            <option value="it">Italian</option>
+          </select>
+        </div>
       </div>
 
       <!-- playback controls -->
       <div class="flex items-center gap-3 mt-4">
         <button id="playBtn" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-2" style="background:var(--teal)">
-          <span>▶</span> Відтворити
+          <span>▶</span> Play
         </button>
-        <button id="pauseBtn" class="px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Пауза</button>
-        <button id="stopBtn" class="px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Стоп</button>
+        <button id="pauseBtn" class="px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Pause</button>
+        <button id="stopBtn" class="px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Stop</button>
+        <button id="printTextBtn" class="px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">🖨 Print text</button>
         <div id="playerWave" class="wave ml-2"><span></span><span></span><span></span><span></span><span></span><span></span></div>
       </div>
+      <p id="playerStatus" class="text-xs text-stone-400 mt-2"></p>
     </section>
 
     <!-- STEP 3: RECORDING -->
     <section class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
       <div class="flex items-center gap-2 mb-4">
         <span class="font-mono text-xs px-2 py-1 rounded bg-stone-100 text-stone-500">03</span>
-        <h2 class="font-display text-lg font-semibold">Запис вашого повторення</h2>
+        <h2 class="font-display text-lg font-semibold">Record your shadowing</h2>
       </div>
 
-      <p class="text-sm text-stone-500 mb-4">Натисніть «Почати запис» — після відліку 3…2…1 говоріть слідом за текстом (shadowing). Розпізнавання мовлення працює найкраще у Chrome.</p>
+      <p class="text-sm text-stone-500 mb-4">Click "Start recording" — after the 3…2…1 countdown, speak along with the text (shadowing). Speech recognition works best in Google Chrome.</p>
 
       <div class="flex items-center gap-3 mb-4">
-        <button id="recordBtn" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--coral)">🎙 Почати запис</button>
-        <button id="recordStopBtn" class="hidden px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Завершити запис</button>
+        <button id="recordBtn" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--coral)">🎙 Start recording</button>
+        <button id="recordStopBtn" class="hidden px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Stop recording</button>
         <span id="recStatus" class="text-sm text-stone-500 font-mono"></span>
       </div>
 
@@ -239,35 +330,100 @@
 
       <!-- RESULT -->
       <div id="resultBlock" class="hidden fade-in mt-5 pt-5 border-t" style="border-color:var(--line)">
-        <div class="flex items-center gap-4 mb-4">
+        <div class="flex items-center gap-4 mb-2">
           <div class="font-display text-4xl font-semibold" id="accuracyScore">0%</div>
           <div class="flex-1">
-            <div class="text-sm text-stone-500 mb-1">Точність відтворення тексту</div>
+            <div class="text-sm text-stone-500 mb-1">Text accuracy</div>
             <div class="w-full barbg rounded-full h-2">
               <div id="accuracyBar" class="bar-fill h-2 rounded-full" style="width:0%"></div>
             </div>
           </div>
         </div>
-        <div class="flex gap-4 text-xs text-stone-500 mb-3">
-          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#e3f2e8;border:1px solid var(--green)"></span>вимовлено правильно</span>
-          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#faf0da;border:1px solid var(--amber)"></span>неточно / запнуто</span>
-          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#fbe7e3;border:1px solid var(--coral)"></span>пропущено / помилка</span>
+        <div id="deltaCompare" class="text-xs text-stone-500 mb-3"></div>
+        <div id="speedCompare" class="text-xs text-stone-500 mb-3"></div>
+        <div class="flex gap-4 text-xs text-stone-500 mb-3 flex-wrap">
+          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#e3f2e8;border:1px solid var(--green)"></span>said correctly</span>
+          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#faf0da;border:1px solid var(--amber)"></span>close / hesitant</span>
+          <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#fbe7e3;border:1px solid var(--coral)"></span>missed / wrong</span>
         </div>
         <div id="diffDisplay" class="border rounded-xl p-4 leading-relaxed" style="border-color:var(--line); background:var(--paper)"></div>
+
+        <div class="flex gap-3 mt-4">
+          <button id="tryAgainBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--teal)">↻ Try again</button>
+          <button id="skipBtn" class="px-4 py-2 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Skip →</button>
+        </div>
 
         <!-- Groq feedback -->
         <div class="mt-5 border-t pt-4" style="border-color:var(--line)">
           <details>
-            <summary class="cursor-pointer text-sm font-medium text-stone-600">Розширений AI-фідбек про просодію (опціонально, потрібен безкоштовний Groq API ключ)</summary>
+            <summary class="cursor-pointer text-sm font-medium text-stone-600">Extended AI feedback on prosody (optional, needs a free Groq API key)</summary>
             <div class="mt-3 space-y-2">
-              <input id="groqKey" type="password" placeholder="gsk_... (ваш безкоштовний Groq API ключ, зберігається лише у вашому браузері)"
+              <input id="groqKey" type="password" placeholder="gsk_... (your free Groq API key — stored only in your browser)"
                 class="w-full border rounded-lg px-3 py-2 text-sm" style="border-color:var(--line)">
-              <p class="text-xs text-stone-400">Ключ можна безкоштовно отримати на console.groq.com. Він зберігається тільки локально у вашому браузері й ніколи нікуди не надсилається, окрім прямого запиту до Groq API.</p>
-              <button id="groqFeedbackBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">Отримати фідбек</button>
+              <p class="text-xs text-stone-400">Get a free key at console.groq.com. It's stored only in your browser and never sent anywhere except directly to the Groq API.</p>
+              <button id="groqFeedbackBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">Get feedback</button>
               <div id="groqResult" class="text-sm text-stone-700 whitespace-pre-wrap mt-2"></div>
             </div>
           </details>
         </div>
+      </div>
+    </section>
+
+    <!-- STEP 4: INTERPRETATION PRACTICE -->
+    <section class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="font-mono text-xs px-2 py-1 rounded bg-stone-100 text-stone-500">04</span>
+        <h2 class="font-display text-lg font-semibold">Interpretation practice <span class="text-xs font-normal text-stone-400">(experimental)</span></h2>
+      </div>
+      <p class="text-sm text-stone-500 mb-4">Instead of repeating the same language, listen to the text loaded in Step 1 and speak your <b>translation</b> into the microphone — like a consecutive or simultaneous interpreter. <b>Use headphones</b> — otherwise the microphone may pick up the speaker audio itself and confuse recognition.</p>
+
+      <div class="flex flex-wrap gap-4 items-end mb-4">
+        <div>
+          <label class="text-xs text-stone-500 block mb-1">Interpret into</label>
+          <select id="interpretLang" class="border rounded-lg px-2 py-1.5 text-sm" style="border-color:var(--line)">
+            <option value="uk">Ukrainian</option>
+            <option value="en">English</option>
+            <option value="de">German</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="pl">Polish</option>
+            <option value="it">Italian</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-stone-500 block mb-1">Style</label>
+          <div class="flex gap-1">
+            <button data-imode="consecutive" class="imode-btn chip on px-3 py-1.5 rounded-lg text-sm">Consecutive (pause each sentence)</button>
+            <button data-imode="simultaneous" class="imode-btn chip px-3 py-1.5 rounded-lg text-sm">Simultaneous (speak while it plays)</button>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-stone-500 block mb-1">Speed</label>
+          <div class="flex gap-1">
+            <button data-irate="0.6" class="irate-btn chip px-3 py-1.5 rounded-lg text-sm">0.6x</button>
+            <button data-irate="0.75" class="irate-btn chip on px-3 py-1.5 rounded-lg text-sm">0.75x</button>
+            <button data-irate="0.9" class="irate-btn chip px-3 py-1.5 rounded-lg text-sm">0.9x</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="interpretProgress" class="text-xs font-mono text-stone-500 mb-2 hidden"></div>
+      <div id="interpretCurrentSentence" class="border rounded-xl p-4 min-h-[70px] mb-3 text-base" style="border-color:var(--line); background:var(--paper)"></div>
+
+      <div class="flex items-center gap-3 mb-2 flex-wrap">
+        <button id="startInterpretBtn" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">🌍 Start interpretation practice</button>
+        <button id="stopInterpretBtn" class="hidden px-4 py-2.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Stop</button>
+        <button id="nextInterpretBtn" class="hidden px-4 py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--teal)">I'm done, next sentence →</button>
+      </div>
+      <p id="interpretStatus" class="text-xs text-stone-400"></p>
+
+      <div id="interpretResults" class="hidden mt-5 pt-5 border-t space-y-3" style="border-color:var(--line)">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h3 class="font-display text-base font-semibold">Results</h3>
+          <button id="interpretGroqBtn" class="text-xs px-3 py-1.5 rounded-lg text-white" style="background:var(--teal)">Get AI assessment (optional, uses the Groq key below)</button>
+        </div>
+        <div id="interpretResultsList" class="space-y-3"></div>
+        <div id="interpretGroqResult" class="text-sm text-stone-700 whitespace-pre-wrap"></div>
       </div>
     </section>
   </div>
@@ -275,29 +431,125 @@
   <!-- RIGHT: history sidebar -->
   <aside class="space-y-4">
     <div class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
-      <h3 class="font-display text-base font-semibold mb-3">Історія спроб</h3>
-      <p class="text-xs text-stone-400 mb-3">Для поточного завантаженого тексту. Зберігається локально у вашому браузері.</p>
-      <div id="historyList" class="space-y-2 text-sm">
-        <p class="text-stone-400 text-xs">Спроб ще немає.</p>
+      <h3 class="font-display text-base font-semibold mb-3">Overall progress</h3>
+      <div id="streakBox" class="flex items-center justify-between mb-3 p-2.5 rounded-lg" style="background:var(--paper)"></div>
+      <div class="mb-3">
+        <div class="flex items-center justify-between text-xs text-stone-500 mb-1">
+          <span>Today's goal</span>
+          <span class="flex items-center gap-1">
+            <input id="dailyGoalInput" type="number" min="1" max="20" class="w-10 border rounded px-1 py-0.5 text-xs text-center" style="border-color:var(--line)"> attempts
+          </span>
+        </div>
+        <div class="w-full barbg rounded-full h-2">
+          <div id="dailyGoalBar" class="bar-fill h-2 rounded-full" style="width:0%"></div>
+        </div>
+        <div id="dailyGoalText" class="text-xs text-stone-400 mt-1"></div>
       </div>
-      <button id="clearHistoryBtn" class="text-xs text-stone-400 hover:text-coral mt-3 underline">очистити історію цього тексту</button>
+      <div id="overallStats" class="text-sm text-stone-600 space-y-1 mb-3"></div>
+      <div class="flex gap-2 flex-wrap">
+        <button id="exportProgressBtn" class="text-xs px-3 py-1.5 rounded-lg border" style="border-color:var(--line)">Export backup</button>
+        <label class="text-xs px-3 py-1.5 rounded-lg border cursor-pointer" style="border-color:var(--line)">
+          Import backup
+          <input id="importProgressFile" type="file" accept="application/json" class="hidden">
+        </label>
+      </div>
+      <p class="text-xs text-stone-400 mt-2">Your progress is saved only in this browser on this device. Export a backup before clearing browser data or switching devices, then import it back later.</p>
+    </div>
+
+    <div class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
+      <h3 class="font-display text-base font-semibold mb-3">Attempt history</h3>
+      <p class="text-xs text-stone-400 mb-3">For the currently loaded text.</p>
+      <div id="historyList" class="space-y-2 text-sm">
+        <p class="text-stone-400 text-xs">No attempts yet.</p>
+      </div>
+      <button id="clearHistoryBtn" class="text-xs text-stone-400 hover:text-coral mt-3 underline">clear history for this text</button>
+    </div>
+
+    <div id="weakSentencesPanel" class="hidden bg-white rounded-2xl border p-5" style="border-color:var(--line)">
+      <h3 class="font-display text-base font-semibold mb-3">Sentences to review</h3>
+      <p class="text-xs text-stone-400 mb-3">Sentences from this text where your accuracy has been low — practice these specifically.</p>
+      <div id="weakSentencesList" class="space-y-2 text-sm"></div>
+    </div>
+
+    <div class="bg-white rounded-2xl border p-5" style="border-color:var(--line)">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-display text-base font-semibold">My vocabulary</h3>
+        <button id="exportVocabBtn" class="text-xs text-stone-400 underline">export</button>
+      </div>
+      <p class="text-xs text-stone-400 mb-3">Click any word in the text to add it, or add one manually below.</p>
+
+      <!-- manual add -->
+      <div class="flex gap-1.5 mb-3">
+        <input id="manualVocabWord" type="text" placeholder="Add a word manually..." class="flex-1 border rounded-lg px-2 py-1.5 text-sm min-w-0" style="border-color:var(--line)">
+        <button id="manualVocabAddBtn" class="px-3 py-1.5 rounded-lg text-sm font-medium text-white whitespace-nowrap" style="background:var(--ink)">+ Add</button>
+      </div>
+
+      <!-- search & sort -->
+      <div class="flex gap-1.5 mb-3">
+        <input id="vocabSearch" type="text" placeholder="Search..." class="flex-1 border rounded-lg px-2 py-1 text-xs min-w-0" style="border-color:var(--line)">
+        <select id="vocabSort" class="border rounded-lg px-1 py-1 text-xs" style="border-color:var(--line)">
+          <option value="newest">Newest first</option>
+          <option value="az">A → Z</option>
+          <option value="unmastered">Not yet learned first</option>
+        </select>
+      </div>
+
+      <div id="vocabList" class="space-y-3 text-sm max-h-72 overflow-y-auto pr-1">
+        <p class="text-stone-400 text-xs">No words saved yet.</p>
+      </div>
+
+      <button id="openFlashcardsBtn" class="mt-3 w-full px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--teal)">🗂 Practice flashcards</button>
     </div>
 
     <div class="bg-white rounded-2xl border p-5 text-xs text-stone-500 leading-relaxed" style="border-color:var(--line)">
-      <h3 class="font-display text-base font-semibold mb-2 text-ink">Як це працює</h3>
+      <h3 class="font-display text-base font-semibold mb-2 text-ink">How it works</h3>
       <ol class="list-decimal list-inside space-y-1">
-        <li>Завантажте текст (свій, з YouTube або демо).</li>
-        <li>Прослухайте зі швидкістю, зручною для рівня.</li>
-        <li>Натисніть слово — почуєте вимову й переклад.</li>
-        <li>Запишіть себе, повторюючи слідом за диктором.</li>
-        <li>Отримайте оцінку та порівняйте прогрес у часі.</li>
+        <li>Load a text (your own, from YouTube, or a demo).</li>
+        <li>Listen at a speed suited to your level.</li>
+        <li>Click a word to hear it and see a translation.</li>
+        <li>Record yourself shadowing the speaker.</li>
+        <li>Get a score and track your progress over time.</li>
       </ol>
     </div>
   </aside>
 </main>
 
+<!-- FLASHCARDS OVERLAY -->
+<div id="flashcardOverlay" class="hidden fixed inset-0 z-50 bg-black/60 items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6 relative">
+    <button id="closeFlashcardsBtn" class="absolute top-3 right-4 text-stone-400 hover:text-stone-700 text-xl">✕</button>
+    <div class="flex items-center justify-between mb-4">
+      <span id="flashcardProgress" class="text-xs font-mono text-stone-500">1 / 1</span>
+      <label class="text-xs text-stone-500 flex items-center gap-1.5">
+        <input id="onlyUnmasteredToggle" type="checkbox" checked> only not-yet-learned
+      </label>
+    </div>
+    <div id="flashcardEmpty" class="hidden text-center text-sm text-stone-400 py-10">
+      Nothing to practice — add some words to your vocabulary first, or turn off the filter above.
+    </div>
+    <div id="flashcardBody">
+      <div id="flashcardFront" class="text-center py-8 cursor-pointer border rounded-xl mb-4" style="border-color:var(--line); background:var(--paper)">
+        <div class="font-display text-3xl font-semibold" id="fcWord"></div>
+        <div class="font-mono text-sm text-stone-400 mt-1" id="fcTranscription"></div>
+        <div class="text-xs text-stone-400 mt-3">tap to reveal</div>
+      </div>
+      <div id="flashcardBack" class="hidden space-y-2 mb-4 text-sm">
+        <div><span class="text-stone-400 text-xs">Translation:</span> <span id="fcTranslation" class="font-medium"></span></div>
+        <div id="fcDefinitionWrap"><span class="text-stone-400 text-xs">Definition:</span> <span id="fcDefinition"></span></div>
+        <div id="fcExampleWrap"><span class="text-stone-400 text-xs">Example:</span> <span id="fcExample" class="italic"></span></div>
+      </div>
+      <div class="flex gap-3">
+        <button id="fcStillLearning" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Still learning</button>
+        <button id="fcKnowIt" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--green)">I know it ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
 <footer class="max-w-6xl mx-auto px-5 py-8 text-xs text-stone-400">
-  Shadow · безкоштовний тренажер вимови. Усі дані (тексти, історія, ключ Groq) зберігаються лише у вашому браузері (localStorage).
+  Shadow · a free pronunciation trainer. All data (texts, history, API keys) is stored only in your browser (localStorage).
 </footer>
 
 <script>
@@ -310,18 +562,45 @@ let rate = 1.0;
 let voices = [];
 let selectedVoice = null;
 let utterance = null;
-let isSpeaking = false;
+let engine = "browser"; // "browser" | "premium"
 let recognition = null;
 let isRecording = false;
 let recognizedTranscript = "";
+let premiumAudio = null;
+let uploadedMediaEl = null;
+let uploadedMediaURL = null;
+let wordTimestamps = null; // [{word, start, end}] when Whisper word timing is available
+let lastPlaybackDurationMs = null;
+let recordStartTime = null;
+let recordDurationMs = null;
 
 /* ============ DEMO TEXTS ============ */
 const DEMO_TEXTS = {
-  A2: "My name is Anna. I live in a small city with my family. Every morning I wake up at seven o'clock. I have breakfast and then I go to school by bus. My favorite subject is art. After school, I like to play with my friends in the park. In the evening, we have dinner together and talk about our day.",
-  B1: "Last summer, my friends and I decided to travel to the mountains for a week. We packed our bags carefully, because the weather can change very quickly up there. On the first day, it rained heavily, so we stayed in a small cabin and played card games. However, the next morning the sky was clear, and we finally went hiking to the top of the hill. The view from there was absolutely amazing, and we took a lot of photos to remember that moment.",
-  B2: "In recent years, remote work has become far more common than it used to be, largely due to advances in technology and changes in how companies think about productivity. While many employees appreciate the flexibility of working from home, others argue that it can lead to feelings of isolation and make it harder to separate professional life from personal life. Employers, meanwhile, are still trying to figure out the right balance between trust and supervision, especially when teams are spread across different time zones.",
-  C1: "The rapid pace of technological change has prompted a great deal of debate about its long-term implications for the labour market. Proponents of automation argue that, historically, technological disruption has ultimately created more opportunities than it has destroyed, pointing to previous industrial revolutions as evidence. Critics, however, contend that the scale and speed of the current transformation, driven largely by artificial intelligence, may not follow the same pattern, potentially displacing entire categories of work before new ones have had time to emerge."
+  A2: [
+    { title:"My Daily Routine", text:"My name is Anna. I live in a small city with my family. Every morning I wake up at seven o'clock. I have breakfast and then I go to school by bus. My favorite subject is art. After school, I like to play with my friends in the park. In the evening, we have dinner together and talk about our day." }
+  ],
+  B1: [
+    { title:"A Trip to the Mountains", text:"Last summer, my friends and I decided to travel to the mountains for a week. We packed our bags carefully, because the weather can change very quickly up there. On the first day, it rained heavily, so we stayed in a small cabin and played card games. However, the next morning the sky was clear, and we finally went hiking to the top of the hill. The view from there was absolutely amazing, and we took a lot of photos to remember that moment." },
+    { title:"Learning to Cook", text:"When I moved into my own apartment, I realized I didn't know how to cook at all. At first, I only made simple things like pasta or sandwiches. Then a friend showed me a few easy recipes, and I started to enjoy spending time in the kitchen. Now I try a new dish almost every weekend. Sometimes it doesn't turn out well, but I don't mind — I've learned that cooking is really about practice, patience, and not being afraid to make mistakes." }
+  ],
+  "B1+": [
+    { title:"Starting Over in a New City", text:"Moving to a new city for a job was more difficult than I expected. For the first few weeks, everything felt unfamiliar — the streets, the shops, even the way people spoke to each other. I didn't know anyone, and I often ate dinner alone in my small apartment. Slowly, though, things began to change. I joined a local sports club, made a few friends there, and started to feel more comfortable exploring the neighborhood on my own. Looking back, I think that period of discomfort actually helped me grow." },
+    { title:"Cutting Down on Plastic", text:"A few months ago, I decided to reduce the amount of plastic I use at home. It sounded simple at first, but it turned out to require a lot of small changes. I started bringing reusable bags to the supermarket, buying soap in bars instead of bottles, and choosing products with less packaging whenever possible. Some habits were easy to change; others took much longer. I still make mistakes sometimes, but overall I've noticed that I throw away far less rubbish than before." }
+  ],
+  B2: [
+    { title:"The Rise of Remote Work", text:"In recent years, remote work has become far more common than it used to be, largely due to advances in technology and changes in how companies think about productivity. While many employees appreciate the flexibility of working from home, others argue that it can lead to feelings of isolation and make it harder to separate professional life from personal life. Employers, meanwhile, are still trying to figure out the right balance between trust and supervision, especially when teams are spread across different time zones." },
+    { title:"Community Gardens in Cities", text:"Across many cities, small plots of unused land are being turned into community gardens, where residents grow vegetables, flowers, and herbs together. Beyond the obvious benefit of fresh produce, these gardens often become social spaces where neighbours who might otherwise never speak to each other start to build relationships. Some urban planners argue that this kind of green space also improves mental wellbeing and encourages people to spend more time outdoors. Critics, however, point out that such projects can be difficult to maintain without consistent funding and volunteer commitment." }
+  ],
+  "B2+": [
+    { title:"Social Media and Attention", text:"There is growing concern among psychologists and educators about the effect that constant social media use may be having on people's ability to concentrate for extended periods. Some researchers argue that the design of these platforms, which rewards frequent short bursts of engagement, may be reshaping habits of attention, particularly among younger users who have grown up with them. Others caution against drawing overly simple conclusions, noting that correlation between usage and attention difficulties does not necessarily prove that one causes the other, and that many other factors are likely involved." },
+    { title:"The Shift Toward Renewable Energy", text:"Governments around the world are under increasing pressure to shift their energy systems away from fossil fuels and toward renewable sources such as solar and wind. Supporters of this transition point to falling costs and the urgent need to reduce carbon emissions, while critics highlight the practical challenges involved, including the reliability of supply during periods of low sunlight or wind, and the significant investment required to update existing infrastructure. Finding a path that balances environmental goals with economic and social stability remains one of the more difficult policy questions of the coming decades." }
+  ],
+  C1: [
+    { title:"Automation and the Labour Market", text:"The rapid pace of technological change has prompted a great deal of debate about its long-term implications for the labour market. Proponents of automation argue that, historically, technological disruption has ultimately created more opportunities than it has destroyed, pointing to previous industrial revolutions as evidence. Critics, however, contend that the scale and speed of the current transformation, driven largely by artificial intelligence, may not follow the same pattern, potentially displacing entire categories of work before new ones have had time to emerge." }
+  ]
 };
+
+const LEVEL_ORDER = ["A2","B1","B1+","B2","B2+","C1"];
 
 /* ============ UTILS ============ */
 function splitSentences(text){
@@ -359,22 +638,22 @@ function loadText(text){
   renderText();
   renderChunkNav();
   renderHistory();
+  if(typeof renderWeakSentences === "function") renderWeakSentences();
 }
 
 function renderText(){
   const container = document.getElementById("textDisplay");
   const source = mode === "chunk" ? (sentences[currentChunk] || "") : currentText;
   if(!source){
-    container.innerHTML = '<span class="text-stone-400 text-sm">Текст з\'явиться тут після завантаження матеріалу.</span>';
+    container.innerHTML = '<span class="text-stone-400 text-sm">Your text will appear here once you load some material.</span>';
     return;
   }
-  // tokenize keeping separators
   const tokens = source.split(/(\s+)/);
   let html = "";
-  tokens.forEach((tok, i)=>{
+  tokens.forEach((tok)=>{
     if(/^\s+$/.test(tok)){ html += tok; return; }
     if(!tok) return;
-    html += `<span class="word" data-idx="${i}" data-raw="${encodeURIComponent(tok)}">${tok}</span>`;
+    html += `<span class="word" data-raw="${encodeURIComponent(tok)}">${tok}</span>`;
   });
   container.innerHTML = html;
 }
@@ -396,7 +675,7 @@ document.querySelectorAll("#sourceTabs button").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     document.querySelectorAll("#sourceTabs button").forEach(b=>b.classList.remove("on"));
     btn.classList.add("on");
-    ["manual","youtube","demo"].forEach(t=>{
+    ["manual","youtube","upload","demo"].forEach(t=>{
       document.getElementById("tab-"+t).classList.toggle("hidden", t !== btn.dataset.tab);
     });
   });
@@ -404,7 +683,7 @@ document.querySelectorAll("#sourceTabs button").forEach(btn=>{
 
 document.getElementById("loadManualBtn").addEventListener("click", ()=>{
   const val = document.getElementById("manualText").value;
-  if(val.trim().length < 3){ alert("Будь ласка, введіть текст."); return; }
+  if(val.trim().length < 3){ alert("Please enter some text first."); return; }
   loadText(val);
 });
 
@@ -412,7 +691,24 @@ document.querySelectorAll(".level-btn").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     document.querySelectorAll(".level-btn").forEach(b=>b.classList.remove("on"));
     btn.classList.add("on");
-    loadText(DEMO_TEXTS[btn.dataset.level]);
+    const texts = DEMO_TEXTS[btn.dataset.level] || [];
+    const picker = document.getElementById("demoTextPicker");
+    picker.classList.remove("hidden");
+    picker.classList.add("flex");
+    picker.innerHTML = texts.map((t,i)=>`<button class="demo-text-btn chip px-3 py-1.5 rounded-full text-sm" data-level="${btn.dataset.level}" data-idx="${i}">${escapeHtml(t.title)}</button>`).join("");
+    picker.querySelectorAll(".demo-text-btn").forEach(tb=>{
+      tb.addEventListener("click", ()=>{
+        picker.querySelectorAll(".demo-text-btn").forEach(b=>b.classList.remove("on"));
+        tb.classList.add("on");
+        const entry = DEMO_TEXTS[tb.dataset.level][parseInt(tb.dataset.idx)];
+        loadText(entry.text);
+      });
+    });
+    // auto-load the first text for convenience
+    if(texts.length){
+      picker.querySelector(".demo-text-btn").classList.add("on");
+      loadText(texts[0].text);
+    }
   });
 });
 
@@ -421,34 +717,212 @@ function extractYouTubeId(url){
   const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : null;
 }
+
+let currentYoutubeId = null;
+let ytPlayer = null;
+let ytPlayerReady = false;
+let ytApiReadyPromise = null;
+let ytCaptionSegments = null; // [{start, dur, charStart, charEnd}] aligned to currentText once loaded
+let ytHighlightInterval = null;
+
+function loadYouTubeAPI(){
+  if(window.YT && window.YT.Player){ return Promise.resolve(); }
+  if(ytApiReadyPromise) return ytApiReadyPromise;
+  ytApiReadyPromise = new Promise((resolve)=>{
+    window.onYouTubeIframeAPIReady = ()=>resolve();
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.body.appendChild(tag);
+  });
+  return ytApiReadyPromise;
+}
+
+async function embedYoutubeVideo(id){
+  await loadYouTubeAPI();
+  if(ytPlayer){
+    ytPlayer.cueVideoById(id);
+    return;
+  }
+  await new Promise((resolve)=>{
+    ytPlayer = new YT.Player("ytPlayerDiv", {
+      videoId: id,
+      playerVars: { rel: 0, modestbranding: 1 },
+      events: {
+        onReady: ()=>{ ytPlayerReady = true; resolve(); },
+        onStateChange: (e)=>{
+          if(e.data === YT.PlayerState.PLAYING){ document.getElementById("playerWave").classList.add("active"); }
+          else{ document.getElementById("playerWave").classList.remove("active"); }
+          if(e.data === YT.PlayerState.ENDED){ stopYoutubeHighlightLoop(); }
+        }
+      }
+    });
+  });
+}
+
 document.getElementById("ytFetchBtn").addEventListener("click", async ()=>{
   const url = document.getElementById("ytUrl").value.trim();
   const status = document.getElementById("ytStatus");
   const id = extractYouTubeId(url);
-  if(!id){ status.textContent = "Не вдалося розпізнати посилання на відео."; return; }
-  status.textContent = "Спроба отримати субтитри...";
+  if(!id){ status.textContent = "Couldn't recognize that video link."; return; }
+
+  currentYoutubeId = id;
+  ytCaptionSegments = null;
+  status.textContent = "Loading video...";
+  try{ await embedYoutubeVideo(id); }
+  catch(e){ /* embedding failing shouldn't block caption fetching */ }
+
+  status.textContent = "Video loaded ✓ · trying to fetch captions for sync...";
   const proxy = "https://api.allorigins.win/raw?url=";
   const target = encodeURIComponent(`https://video.google.com/timedtext?lang=en&v=${id}`);
   try{
     const res = await fetch(proxy + target);
     const xml = await res.text();
-    if(!xml || !xml.includes("<text")){
-      throw new Error("empty");
-    }
+    if(!xml || !xml.includes("<text")){ throw new Error("empty"); }
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, "text/xml");
     const nodes = [...doc.getElementsByTagName("text")];
-    const text = nodes.map(n=>{
-      const t = document.createElement("textarea");
-      t.innerHTML = n.textContent;
-      return t.value;
-    }).join(" ").replace(/\s+/g," ").trim();
-    if(!text){ throw new Error("empty2"); }
-    status.textContent = "Субтитри успішно отримано ✓";
+    const decode = (s)=>{ const t = document.createElement("textarea"); t.innerHTML = s; return t.value; };
+    const rawSegments = nodes.map(n=>({
+      text: decode(n.textContent).replace(/\s+/g," ").trim(),
+      start: parseFloat(n.getAttribute("start")||"0"),
+      dur: parseFloat(n.getAttribute("dur")||"2")
+    })).filter(s=>s.text);
+    if(!rawSegments.length){ throw new Error("empty2"); }
+
+    // build the full text the same way it will be joined, tracking character offsets per segment
+    let charAcc = 0;
+    const segments = rawSegments.map((s,i)=>{
+      const charStart = charAcc;
+      const charEnd = charStart + s.text.length;
+      charAcc = charEnd + 1; // +1 for the joining space
+      return {...s, charStart, charEnd};
+    });
+    ytCaptionSegments = segments;
+    const fullText = rawSegments.map(s=>s.text).join(" ");
+    status.textContent = "Video and captions loaded ✓ — highlighting will sync to real playback.";
+    loadText(fullText);
+  }catch(e){
+    status.textContent = "Video loaded, but captions couldn't be fetched automatically (unavailable or blocked by CORS). You can still use the real video for listening — just paste the transcript manually into the \"Your own text\" tab and switch the voice engine to \"YouTube video\" below (highlighting won't sync without captions, but the audio will be real).";
+  }
+
+  // switch to the YouTube engine automatically once a video is loaded
+  document.querySelectorAll(".engine-btn").forEach(b=>b.classList.toggle("on", b.dataset.engine==="youtube"));
+  engine = "youtube";
+  document.getElementById("premiumPanel").classList.add("hidden");
+  document.getElementById("browserVoiceControl").classList.add("hidden");
+  document.getElementById("uploadMediaControl").classList.add("hidden");
+  document.getElementById("youtubeMediaControl").classList.remove("hidden");
+});
+
+function stopYoutubeHighlightLoop(){
+  if(ytHighlightInterval){ clearInterval(ytHighlightInterval); ytHighlightInterval = null; }
+}
+
+function playYoutubeVideo(container){
+  const status = document.getElementById("playerStatus");
+  if(!ytPlayer || !currentYoutubeId){ status.textContent = "Please load a video on the \"YouTube / TED\" tab first."; return; }
+  status.textContent = "";
+  ytPlayer.setPlaybackRate(rate);
+  ytPlayer.playVideo();
+  stopYoutubeHighlightLoop();
+  if(ytCaptionSegments && ytCaptionSegments.length){
+    ytHighlightInterval = setInterval(()=>{
+      const t = ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0;
+      const seg = ytCaptionSegments.find(s => t >= s.start && t < s.start + s.dur);
+      document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+      if(seg){
+        container.querySelectorAll(".word").forEach(el=>{
+          // approximate: highlight words whose position (by scanning) falls within this segment's char range
+        });
+        highlightRangeByChar(container, seg.charStart, seg.charEnd);
+      }
+    }, 250);
+  }
+}
+function highlightRangeByChar(container, charStart, charEnd){
+  const source = currentText;
+  let acc = 0;
+  container.querySelectorAll(".word").forEach(el=>{
+    const tok = decodeURIComponent(el.dataset.raw);
+    const idx = source.indexOf(tok, acc);
+    if(idx === -1) return;
+    if(idx >= charStart && idx < charEnd){ el.classList.add("active-word"); }
+    acc = idx + tok.length;
+  });
+}
+
+/* ============ UPLOADED MEDIA ============ */
+document.getElementById("mediaFile").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  if(uploadedMediaURL) URL.revokeObjectURL(uploadedMediaURL);
+  uploadedMediaURL = URL.createObjectURL(file);
+  wordTimestamps = null;
+  const wrap = document.getElementById("mediaPreviewWrap");
+  wrap.classList.remove("hidden");
+  const isVideo = file.type.startsWith("video");
+  wrap.innerHTML = "";
+  uploadedMediaEl = document.createElement(isVideo ? "video" : "audio");
+  uploadedMediaEl.controls = true;
+  uploadedMediaEl.className = "w-full rounded-lg";
+  uploadedMediaEl.src = uploadedMediaURL;
+  wrap.appendChild(uploadedMediaEl);
+});
+
+document.getElementById("loadUploadTextBtn").addEventListener("click", ()=>{
+  const val = document.getElementById("uploadText").value;
+  if(val.trim().length < 3){ alert("Please paste a transcript first."); return; }
+  loadText(val);
+});
+
+document.getElementById("transcribeBtn").addEventListener("click", async ()=>{
+  const status = document.getElementById("transcribeStatus");
+  const file = document.getElementById("mediaFile").files[0];
+  const key = document.getElementById("groqKey").value.trim() || localStorage.getItem("shadow_groq_key") || "";
+  if(!file){ status.textContent = "Please choose a file first."; return; }
+  if(!key){ status.textContent = "Please enter your free Groq API key (in the AI feedback section below, or paste it here first) to use auto-transcription."; return; }
+  localStorage.setItem("shadow_groq_key", key);
+  status.textContent = "Transcribing... this can take a moment for longer files.";
+  try{
+    const form = new FormData();
+    form.append("file", file);
+    form.append("model", "whisper-large-v3");
+    form.append("response_format", "verbose_json");
+    form.append("timestamp_granularities[]", "word");
+    const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + key },
+      body: form
+    });
+    const data = await res.json();
+    if(data.error){ status.textContent = "Groq error: " + data.error.message; return; }
+    const text = data.text || "";
+    if(!text){ status.textContent = "No speech detected in the file."; return; }
+    document.getElementById("uploadText").value = text;
+    if(Array.isArray(data.words) && data.words.length){
+      wordTimestamps = data.words.map(w=>({word:w.word, start:w.start, end:w.end}));
+      status.textContent = "Transcribed successfully, with word timing for karaoke highlighting ✓";
+    } else {
+      wordTimestamps = null;
+      status.textContent = "Transcribed successfully (no word-level timing returned, so highlighting won't sync during playback).";
+    }
     loadText(text);
   }catch(e){
-    status.textContent = "Не вдалося автоматично отримати субтитри для цього відео (можливо, вони недоступні або заблоковані CORS). Скопіюйте транскрипт вручну через YouTube і вставте його у вкладку «Свій текст».";
+    status.textContent = "Couldn't reach the Groq API. Check your key, internet connection, or try a shorter file.";
   }
+});
+
+/* ============ ENGINE SWITCH ============ */
+document.querySelectorAll(".engine-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".engine-btn").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    engine = btn.dataset.engine;
+    document.getElementById("premiumPanel").classList.toggle("hidden", engine !== "premium");
+    document.getElementById("browserVoiceControl").classList.toggle("hidden", engine !== "browser");
+    document.getElementById("uploadMediaControl").classList.toggle("hidden", engine !== "upload");
+    document.getElementById("youtubeMediaControl").classList.toggle("hidden", engine !== "youtube");
+  });
 });
 
 /* ============ VOICES ============ */
@@ -457,16 +931,18 @@ function populateVoices(){
   const select = document.getElementById("voiceSelect");
   if(!voices.length) return;
   select.innerHTML = "";
-  // preferred language order
   const preferredLangs = ["en-US","en-GB","de-DE","fr-FR","es-ES","it-IT","uk-UA"];
+  // remote (cloud) voices are usually much higher quality than local offline voices
   const sorted = [...voices].sort((a,b)=>{
+    const cloudDiff = (a.localService?1:0) - (b.localService?1:0);
+    if(cloudDiff !== 0) return cloudDiff;
     const ai = preferredLangs.indexOf(a.lang), bi = preferredLangs.indexOf(b.lang);
     return (ai===-1?99:ai) - (bi===-1?99:bi);
   });
   sorted.forEach((v,i)=>{
     const opt = document.createElement("option");
     opt.value = i;
-    opt.textContent = `${v.name} (${v.lang})`;
+    opt.textContent = `${v.name} (${v.lang})${v.localService ? "" : " ★ cloud"}`;
     select.appendChild(opt);
   });
   select.onchange = ()=>{ selectedVoice = sorted[select.value]; };
@@ -500,60 +976,177 @@ document.getElementById("nextChunk").addEventListener("click", ()=>{
   if(currentChunk < sentences.length-1){ currentChunk++; renderText(); renderChunkNav(); }
 });
 
-function speakSource(text, onBoundaryWordIndex, onEnd){
+function highlightByCharIndex(source, container, charIndex){
+  document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+  let acc = 0;
+  const spans = [...container.querySelectorAll(".word")];
+  for(const tok of source.split(/(\s+)/)){
+    if(/^\s+$/.test(tok)){ acc += tok.length; continue; }
+    if(charIndex >= acc && charIndex < acc + tok.length + 1){
+      const target = spans.find(s => decodeURIComponent(s.dataset.raw) === tok && !s.classList.contains("active-word"));
+      if(target){ target.classList.add("active-word"); target.scrollIntoView({block:"nearest", behavior:"smooth"}); }
+      break;
+    }
+    acc += tok.length;
+  }
+}
+
+function speakBrowser(source, container, onEnd){
   speechSynthesis.cancel();
-  utterance = new SpeechSynthesisUtterance(text);
+  utterance = new SpeechSynthesisUtterance(source);
   if(selectedVoice) utterance.voice = selectedVoice;
   utterance.rate = rate;
+  let startTs = 0;
   utterance.onstart = ()=>{
-    isSpeaking = true;
     document.getElementById("playerWave").classList.add("active");
+    startTs = performance.now();
   };
-  utterance.onboundary = (e)=>{
-    if(e.name === "word" || e.charIndex !== undefined){
-      onBoundaryWordIndex(e.charIndex);
-    }
-  };
+  utterance.onboundary = (e)=>{ highlightByCharIndex(source, container, e.charIndex); };
   utterance.onend = ()=>{
-    isSpeaking = false;
     document.getElementById("playerWave").classList.remove("active");
     document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+    if(startTs){ lastPlaybackDurationMs = performance.now() - startTs; }
     if(onEnd) onEnd();
   };
   speechSynthesis.speak(utterance);
 }
 
+async function speakPremium(source, container, onEnd){
+  const key = document.getElementById("elevenKey").value.trim();
+  const status = document.getElementById("playerStatus");
+  if(!key){ status.textContent = "Please enter your free ElevenLabs API key above, or switch back to the browser voice."; return; }
+  status.textContent = "Generating premium audio...";
+  const voiceId = "21m00Tcm4TlvDq8ikWAM"; // default free multilingual voice ("Rachel")
+  try{
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "xi-api-key": key,
+        "Accept":"audio/mpeg"
+      },
+      body: JSON.stringify({
+        text: source,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {stability:0.4, similarity_boost:0.75}
+      })
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throw new Error(errText || res.statusText);
+    }
+    status.textContent = "";
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    premiumAudio = new Audio(url);
+    premiumAudio.playbackRate = rate;
+    document.getElementById("playerWave").classList.add("active");
+    // rough word-by-word highlight, timed proportionally to word length
+    const words = source.split(/(\s+)/).filter(t=>t.length);
+    const wordTokens = words.filter(t=>!/^\s+$/.test(t));
+    const totalChars = wordTokens.join("").length || 1;
+    premiumAudio.onloadedmetadata = ()=>{
+      const duration = premiumAudio.duration || (wordTokens.length*0.35);
+      let acc = 0, charAcc = 0;
+      const timers = [];
+      words.forEach(tok=>{
+        if(/^\s+$/.test(tok)){ return; }
+        const startFrac = charAcc/totalChars;
+        const t = setTimeout(()=>{ highlightByCharIndex(source, container, acc); }, startFrac*duration*1000);
+        timers.push(t);
+        charAcc += tok.length;
+        acc += tok.length + 1;
+      });
+      premiumAudio._timers = timers;
+    };
+    premiumAudio.onended = ()=>{
+      document.getElementById("playerWave").classList.remove("active");
+      document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+      lastPlaybackDurationMs = (premiumAudio.duration || 0) * 1000;
+      if(onEnd) onEnd();
+    };
+    premiumAudio.play();
+  }catch(e){
+    status.textContent = "Couldn't reach ElevenLabs (check your key, or you may have hit the free quota). Falling back to the browser voice.";
+    speakBrowser(source, container, onEnd);
+  }
+}
+
+function playUploadedMedia(source, container){
+  const status = document.getElementById("playerStatus");
+  if(!uploadedMediaEl){ status.textContent = "Please upload an audio/video file first, on the \"Upload audio / video\" tab."; return; }
+  status.textContent = "";
+  uploadedMediaEl.playbackRate = rate;
+  document.getElementById("playerWave").classList.add("active");
+
+  document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+  if(wordTimestamps && wordTimestamps.length){
+    const handler = ()=>{
+      const t = uploadedMediaEl.currentTime;
+      const idx = wordTimestamps.findIndex(w => t >= w.start && t <= w.end);
+      if(idx >= 0){
+        // best-effort match: highlight the word in the display that matches this position in the token sequence
+        const spans = [...container.querySelectorAll(".word")];
+        document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+        if(spans[idx]){ spans[idx].classList.add("active-word"); spans[idx].scrollIntoView({block:"nearest", behavior:"smooth"}); }
+      }
+    };
+    uploadedMediaEl.ontimeupdate = handler;
+  } else {
+    uploadedMediaEl.ontimeupdate = null;
+  }
+  uploadedMediaEl.onended = ()=>{
+    document.getElementById("playerWave").classList.remove("active");
+    document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
+  };
+  uploadedMediaEl.play();
+}
+
 document.getElementById("playBtn").addEventListener("click", ()=>{
   const source = mode === "chunk" ? (sentences[currentChunk] || "") : currentText;
-  if(!source){ alert("Спочатку завантажте текст."); return; }
+  if(!source && engine !== "youtube"){ alert("Please load a text first."); return; }
   const container = document.getElementById("textDisplay");
-  speakSource(source, (charIndex)=>{
-    document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
-    const spans = [...container.querySelectorAll(".word")];
-    // find span whose position in source text roughly matches charIndex
-    let acc = 0;
-    for(const tok of source.split(/(\s+)/)){
-      if(/^\s+$/.test(tok)){ acc += tok.length; continue; }
-      if(charIndex >= acc && charIndex < acc + tok.length + 1){
-        const target = spans.find(s => decodeURIComponent(s.dataset.raw) === tok && !s.classList.contains("active-word"));
-        if(target){ target.classList.add("active-word"); target.scrollIntoView({block:"nearest", behavior:"smooth"}); }
-        break;
-      }
-      acc += tok.length;
-    }
-  });
+  if(engine === "premium"){ speakPremium(source, container); }
+  else if(engine === "upload"){ playUploadedMedia(source, container); }
+  else if(engine === "youtube"){ playYoutubeVideo(container); }
+  else{ speakBrowser(source, container); }
 });
 document.getElementById("pauseBtn").addEventListener("click", ()=>{
+  if(engine === "youtube" && ytPlayer){
+    const state = ytPlayer.getPlayerState ? ytPlayer.getPlayerState() : null;
+    if(state === 1){ ytPlayer.pauseVideo(); } else { ytPlayer.playVideo(); }
+    return;
+  }
+  if(engine === "upload" && uploadedMediaEl){
+    if(uploadedMediaEl.paused) uploadedMediaEl.play(); else uploadedMediaEl.pause();
+    return;
+  }
+  if(engine === "premium" && premiumAudio){
+    if(premiumAudio.paused) premiumAudio.play(); else premiumAudio.pause();
+    return;
+  }
   if(speechSynthesis.speaking && !speechSynthesis.paused){ speechSynthesis.pause(); }
   else if(speechSynthesis.paused){ speechSynthesis.resume(); }
 });
 document.getElementById("stopBtn").addEventListener("click", ()=>{
   speechSynthesis.cancel();
+  if(premiumAudio){
+    premiumAudio.pause();
+    (premiumAudio._timers||[]).forEach(t=>clearTimeout(t));
+  }
+  if(uploadedMediaEl){ uploadedMediaEl.pause(); uploadedMediaEl.currentTime = 0; }
+  if(ytPlayer && ytPlayer.stopVideo){ ytPlayer.stopVideo(); stopYoutubeHighlightLoop(); }
   document.getElementById("playerWave").classList.remove("active");
   document.querySelectorAll(".active-word").forEach(el=>el.classList.remove("active-word"));
 });
 
 /* ============ WORD CLICK DICTIONARY ============ */
+async function fetchTranslation(word, targetLang, srcLang){
+  const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=${srcLang}|${targetLang}`);
+  const data = await res.json();
+  return data?.responseData?.translatedText || "Translation unavailable.";
+}
+
 document.getElementById("textDisplay").addEventListener("click", async (e)=>{
   const el = e.target.closest(".word");
   if(!el) return;
@@ -563,10 +1156,10 @@ document.getElementById("textDisplay").addEventListener("click", async (e)=>{
   const popup = document.getElementById("wordPopup");
   const rect = el.getBoundingClientRect();
   popup.style.top = (window.scrollY + rect.bottom + 6) + "px";
-  popup.style.left = Math.min(window.scrollX + rect.left, window.innerWidth - 240) + "px";
+  popup.style.left = Math.min(window.scrollX + rect.left, window.innerWidth - 260) + "px";
   popup.classList.remove("hidden");
   document.getElementById("popupWord").textContent = clean;
-  document.getElementById("popupTranslation").textContent = "Переклад завантажується...";
+  document.getElementById("popupTranslation").textContent = "Loading translation...";
   document.getElementById("popupSpeak").onclick = ()=>{
     const u = new SpeechSynthesisUtterance(clean);
     if(selectedVoice) u.voice = selectedVoice;
@@ -574,13 +1167,32 @@ document.getElementById("textDisplay").addEventListener("click", async (e)=>{
     speechSynthesis.speak(u);
   };
   const srcLang = (selectedVoice ? selectedVoice.lang.split("-")[0] : "en");
-  try{
-    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean)}&langpair=${srcLang}|uk`);
-    const data = await res.json();
-    document.getElementById("popupTranslation").textContent = data?.responseData?.translatedText || "Переклад недоступний.";
-  }catch(err){
-    document.getElementById("popupTranslation").textContent = "Переклад недоступний (немає з'єднання).";
+  const targetSelect = document.getElementById("translateLang");
+  let latestTranslation = "";
+  async function doTranslate(){
+    document.getElementById("popupTranslation").textContent = "Loading translation...";
+    try{
+      latestTranslation = await fetchTranslation(clean, targetSelect.value, srcLang);
+    }catch(err){
+      latestTranslation = "";
+    }
+    document.getElementById("popupTranslation").textContent = latestTranslation || "Translation unavailable (no connection).";
   }
+  targetSelect.onchange = doTranslate;
+  doTranslate();
+  document.getElementById("popupAddVocab").onclick = async ()=>{
+    const btn = document.getElementById("popupAddVocab");
+    const original = btn.textContent;
+    btn.textContent = "Adding...";
+    btn.disabled = true;
+    // make sure we have a real translation, even if the popup is still loading or previously failed
+    if(!latestTranslation){
+      try{ latestTranslation = await fetchTranslation(clean, targetSelect.value, srcLang); }catch(e){ latestTranslation = ""; }
+    }
+    addToVocab(clean, latestTranslation || "(no translation found)", targetSelect.value, srcLang);
+    btn.textContent = "Added ✓";
+    setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1200);
+  };
 });
 document.addEventListener("click", (e)=>{
   const popup = document.getElementById("wordPopup");
@@ -613,7 +1225,7 @@ function startCountdownThenRecord(){
 
 function actuallyStartRecording(){
   if(!SpeechRecognitionCtor){
-    alert("Ваш браузер не підтримує розпізнавання мовлення. Спробуйте Google Chrome.");
+    alert("Your browser doesn't support speech recognition. Please try Google Chrome.");
     return;
   }
   recognition = new SpeechRecognitionCtor();
@@ -623,7 +1235,7 @@ function actuallyStartRecording(){
   recognizedTranscript = "";
   const live = document.getElementById("liveTranscript");
   live.classList.remove("hidden");
-  live.textContent = "Слухаю...";
+  live.textContent = "Listening...";
 
   recognition.onresult = (event)=>{
     let interim = "", final = "";
@@ -633,32 +1245,33 @@ function actuallyStartRecording(){
       else interim += r[0].transcript;
     }
     recognizedTranscript = (final + interim).trim();
-    live.textContent = recognizedTranscript || "Слухаю...";
+    live.textContent = recognizedTranscript || "Listening...";
   };
   recognition.onerror = (e)=>{
-    document.getElementById("recStatus").textContent = "Помилка розпізнавання: " + e.error;
+    document.getElementById("recStatus").textContent = "Recognition error: " + e.error;
   };
   recognition.onend = ()=>{
     if(isRecording){
-      // browser stopped on its own (silence timeout); restart if still recording
       try{ recognition.start(); }catch(e){}
     }
   };
   recognition.start();
   isRecording = true;
+  recordStartTime = performance.now();
   document.getElementById("recordBtn").classList.add("hidden");
   document.getElementById("recordStopBtn").classList.remove("hidden");
-  document.getElementById("recStatus").textContent = "🔴 запис триває...";
+  document.getElementById("recStatus").textContent = "🔴 recording...";
 }
 
 document.getElementById("recordBtn").addEventListener("click", startCountdownThenRecord);
 
 document.getElementById("recordStopBtn").addEventListener("click", ()=>{
   isRecording = false;
+  recordDurationMs = recordStartTime ? (performance.now() - recordStartTime) : null;
   if(recognition){ recognition.stop(); }
   document.getElementById("recordBtn").classList.remove("hidden");
   document.getElementById("recordStopBtn").classList.add("hidden");
-  document.getElementById("recStatus").textContent = "Запис завершено.";
+  document.getElementById("recStatus").textContent = "Recording finished.";
   runComparison();
 });
 
@@ -671,7 +1284,6 @@ function alignWords(origWords, saidWords){
       dp[i][j] = origWords[i-1] === saidWords[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j], dp[i][j-1]);
     }
   }
-  // backtrack matched indices in original
   const matchedOrig = new Set();
   const matchedSaid = new Set();
   let i=n, j=m;
@@ -687,7 +1299,8 @@ function alignWords(origWords, saidWords){
 
 function runComparison(){
   if(!currentText){ return; }
-  const source = mode === "chunk" ? sentences[currentChunk] : currentText;
+  const isChunk = mode === "chunk";
+  const source = isChunk ? sentences[currentChunk] : currentText;
   const rawOrigTokens = source.split(/\s+/).filter(Boolean);
   const origWords = rawOrigTokens.map(normalizeWord);
   const saidTokensRaw = recognizedTranscript.split(/\s+/).filter(Boolean);
@@ -704,13 +1317,48 @@ function runComparison(){
       correctCount++;
       display += `<span class="word g-correct">${tok}</span> `;
     } else {
-      // check partial: close to some unmatched said word
       const close = unmatchedSaid.some(sw => sw.length>2 && levenshtein(norm, sw) <= Math.max(1, Math.floor(norm.length*0.3)));
       display += `<span class="word ${close ? 'g-partial' : 'g-wrong'}">${tok}</span> `;
     }
   });
 
   const accuracy = rawOrigTokens.length ? Math.round((correctCount / rawOrigTokens.length) * 100) : 0;
+
+  // delta vs previous attempt, before we save the new one
+  let deltaHtml = "";
+  if(isChunk){
+    const stats = loadSentenceStats();
+    const tstats = stats[historyKey()];
+    const prevList = tstats && tstats[currentChunk] ? tstats[currentChunk] : null;
+    if(prevList && prevList.length){
+      const prevAvg = Math.round(prevList.reduce((a,b)=>a+b,0)/prevList.length);
+      deltaHtml = renderDeltaHtml(accuracy, prevAvg);
+    } else {
+      deltaHtml = '<span class="text-stone-400">First attempt at this sentence.</span>';
+    }
+  } else {
+    const all = loadAllHistory();
+    const prevAttempts = all[historyKey()]?.attempts || [];
+    if(prevAttempts.length){
+      const prevAccuracy = prevAttempts[prevAttempts.length-1].accuracy;
+      deltaHtml = renderDeltaHtml(accuracy, prevAccuracy);
+    } else {
+      deltaHtml = '<span class="text-stone-400">First attempt at this text.</span>';
+    }
+  }
+  document.getElementById("deltaCompare").innerHTML = deltaHtml;
+
+  // speed comparison
+  const speedBox = document.getElementById("speedCompare");
+  if(lastPlaybackDurationMs && recordDurationMs){
+    const origSec = (lastPlaybackDurationMs/1000).toFixed(1);
+    const yourSec = (recordDurationMs/1000).toFixed(1);
+    const diffPct = Math.round(((recordDurationMs-lastPlaybackDurationMs)/lastPlaybackDurationMs)*100);
+    const label = diffPct > 5 ? `${diffPct}% slower than the original` : diffPct < -5 ? `${Math.abs(diffPct)}% faster than the original` : "very close to the original pace";
+    speedBox.textContent = `⏱ Your pace: ${yourSec}s vs ${origSec}s for the original — ${label}.`;
+  } else {
+    speedBox.textContent = "⏱ Play the audio (browser or premium voice) right before recording to see a pace comparison.";
+  }
 
   document.getElementById("diffDisplay").innerHTML = display;
   document.getElementById("accuracyScore").textContent = accuracy + "%";
@@ -719,6 +1367,16 @@ function runComparison(){
   document.getElementById("resultBlock").scrollIntoView({behavior:"smooth", block:"nearest"});
 
   saveAttempt(accuracy);
+  if(isChunk){ updateSentenceStats(currentChunk, accuracy); }
+  recordDailyActivity();
+  showToast("Attempt saved ✓");
+}
+
+function renderDeltaHtml(current, previous){
+  const diff = current - previous;
+  if(diff > 0) return `<span style="color:var(--green)">▲ +${diff}% vs last time (${previous}%)</span>`;
+  if(diff < 0) return `<span style="color:var(--coral)">▼ ${diff}% vs last time (${previous}%)</span>`;
+  return `<span class="text-stone-400">Same as last time (${previous}%)</span>`;
 }
 
 /* ============ HISTORY (localStorage) ============ */
@@ -730,9 +1388,10 @@ function saveAttempt(accuracy){
   const all = loadAllHistory();
   const key = historyKey();
   if(!all[key]) all[key] = {snippet: currentText.slice(0,60), attempts:[]};
-  all[key].attempts.push({date: new Date().toLocaleString("uk-UA"), accuracy});
+  all[key].attempts.push({date: new Date().toLocaleString(), accuracy});
   localStorage.setItem("shadow_history_v1", JSON.stringify(all));
   renderHistory();
+  if(typeof renderOverallStats === "function") renderOverallStats();
 }
 function renderHistory(){
   const all = loadAllHistory();
@@ -740,12 +1399,12 @@ function renderHistory(){
   const list = document.getElementById("historyList");
   const entry = all[key];
   if(!entry || !entry.attempts.length){
-    list.innerHTML = '<p class="text-stone-400 text-xs">Спроб ще немає.</p>';
+    list.innerHTML = '<p class="text-stone-400 text-xs">No attempts yet.</p>';
     return;
   }
   list.innerHTML = entry.attempts.map((a,i)=>`
     <div class="flex items-center justify-between gap-2">
-      <span class="text-stone-500 text-xs">Спроба ${i+1} · ${a.date}</span>
+      <span class="text-stone-500 text-xs">Attempt ${i+1} · ${a.date}</span>
       <span class="font-mono text-xs font-semibold" style="color:${a.accuracy>=80?'var(--green)':a.accuracy>=60?'var(--amber)':'var(--coral)'}">${a.accuracy}%</span>
     </div>
   `).join("");
@@ -757,18 +1416,476 @@ document.getElementById("clearHistoryBtn").addEventListener("click", ()=>{
   renderHistory();
 });
 
+/* ============ SENTENCE-LEVEL STATS & WEAK SENTENCES ============ */
+function loadSentenceStats(){
+  try{ return JSON.parse(localStorage.getItem("shadow_sentence_stats_v1") || "{}"); }catch(e){ return {}; }
+}
+function saveSentenceStats(stats){ localStorage.setItem("shadow_sentence_stats_v1", JSON.stringify(stats)); }
+function updateSentenceStats(sentenceIndex, accuracy){
+  const stats = loadSentenceStats();
+  const key = historyKey();
+  if(!stats[key]) stats[key] = {};
+  if(!stats[key][sentenceIndex]) stats[key][sentenceIndex] = [];
+  stats[key][sentenceIndex].push(accuracy);
+  // keep only the most recent 5 attempts per sentence
+  if(stats[key][sentenceIndex].length > 5) stats[key][sentenceIndex] = stats[key][sentenceIndex].slice(-5);
+  saveSentenceStats(stats);
+  renderWeakSentences();
+}
+function renderWeakSentences(){
+  const panel = document.getElementById("weakSentencesPanel");
+  const box = document.getElementById("weakSentencesList");
+  const stats = loadSentenceStats();
+  const tstats = stats[historyKey()];
+  if(!tstats || !sentences.length){ panel.classList.add("hidden"); return; }
+  const weak = Object.keys(tstats).map(idx=>{
+    const arr = tstats[idx];
+    const avg = Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
+    return {index: parseInt(idx), avg, count: arr.length};
+  }).filter(s => s.avg < 75 && sentences[s.index] !== undefined)
+    .sort((a,b)=>a.avg-b.avg);
+
+  if(!weak.length){ panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+  box.innerHTML = weak.map(s=>`
+    <div class="border rounded-lg p-2.5 flex items-start justify-between gap-2" style="border-color:var(--line)">
+      <div class="flex-1 min-w-0">
+        <div class="text-xs mb-1" style="color:${s.avg<60?'var(--coral)':'var(--amber)'}">avg. ${s.avg}% over ${s.count} attempt${s.count>1?"s":""}</div>
+        <div class="text-sm text-stone-600 truncate">${escapeHtml(sentences[s.index].slice(0,80))}${sentences[s.index].length>80?"…":""}</div>
+      </div>
+      <button class="practiceWeakBtn text-xs px-2.5 py-1 rounded-lg text-white shrink-0" style="background:var(--teal)" data-idx="${s.index}">Practice</button>
+    </div>
+  `).join("");
+  box.querySelectorAll(".practiceWeakBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      const idx = parseInt(btn.dataset.idx);
+      mode = "chunk";
+      document.querySelectorAll(".mode-btn").forEach(b=>b.classList.toggle("on", b.dataset.mode==="chunk"));
+      currentChunk = idx;
+      renderText();
+      renderChunkNav();
+      document.getElementById("textDisplay").scrollIntoView({behavior:"smooth", block:"center"});
+    };
+  });
+}
+
+/* ============ STREAK & DAILY GOAL ============ */
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function yesterdayStr(){ const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
+function loadStreak(){
+  try{ return JSON.parse(localStorage.getItem("shadow_streak_v1") || "{}"); }catch(e){ return {}; }
+}
+function loadDailyGoal(){
+  const v = parseInt(localStorage.getItem("shadow_daily_goal") || "3");
+  return isNaN(v) ? 3 : v;
+}
+function recordDailyActivity(){
+  const today = todayStr();
+  let data = loadStreak();
+  if(!data.lastDate){ data = {lastDate: today, streak: 1, todayDate: today, todayCount: 1}; }
+  else if(data.todayDate === today){ data.todayCount = (data.todayCount||0) + 1; }
+  else if(data.lastDate === yesterdayStr()){ data.streak = (data.streak||0) + 1; data.lastDate = today; data.todayDate = today; data.todayCount = 1; }
+  else { data.streak = 1; data.lastDate = today; data.todayDate = today; data.todayCount = 1; }
+  localStorage.setItem("shadow_streak_v1", JSON.stringify(data));
+  renderStreakAndGoal();
+}
+function renderStreakAndGoal(){
+  const data = loadStreak();
+  const today = todayStr();
+  const todayCount = (data.todayDate === today) ? (data.todayCount||0) : 0;
+  const goal = loadDailyGoal();
+  document.getElementById("dailyGoalInput").value = goal;
+  const streak = data.streak || 0;
+  document.getElementById("streakBox").innerHTML = `
+    <span class="text-sm">🔥 <b>${streak}</b> day${streak===1?"":"s"} in a row</span>
+    <span class="text-xs text-stone-400">${todayCount} attempt${todayCount===1?"":"s"} today</span>
+  `;
+  const pct = Math.min(100, Math.round((todayCount/goal)*100));
+  document.getElementById("dailyGoalBar").style.width = pct + "%";
+  document.getElementById("dailyGoalText").textContent = todayCount >= goal
+    ? "Goal reached for today ✓"
+    : `${goal - todayCount} more to reach today's goal`;
+}
+document.getElementById("dailyGoalInput").addEventListener("change", (e)=>{
+  const v = Math.max(1, parseInt(e.target.value)||3);
+  localStorage.setItem("shadow_daily_goal", v);
+  renderStreakAndGoal();
+});
+renderStreakAndGoal();
+
+/* ============ TOAST ============ */
+let toastTimer = null;
+function showToast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.classList.remove("show"); }, 1600);
+}
+
+/* ============ PRINT ============ */
+document.getElementById("printTextBtn").addEventListener("click", ()=>{
+  if(!currentText){ alert("Please load a text first."); return; }
+  window.print();
+});
+
+/* ============ WARN BEFORE LEAVING WHILE RECORDING ============ */
+window.addEventListener("beforeunload", (e)=>{
+  if(isRecording){
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
+/* ============ VOCABULARY ============ */
+function loadVocab(){
+  try{ return JSON.parse(localStorage.getItem("shadow_vocab_v1") || "[]"); }catch(e){ return []; }
+}
+function saveVocabList(list){ localStorage.setItem("shadow_vocab_v1", JSON.stringify(list)); }
+function genId(){ return "v" + Date.now() + Math.floor(Math.random()*1000); }
+function escapeAttr(s){ return (s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+function escapeHtml(s){ return escapeAttr(s); }
+
+async function fetchDictionaryInfo(word, langCode){
+  try{
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/${langCode}/${encodeURIComponent(word)}`);
+    if(!res.ok) return null;
+    const data = await res.json();
+    const entry = data[0];
+    if(!entry) return null;
+    const transcription = entry.phonetic || (entry.phonetics||[]).map(p=>p.text).find(Boolean) || "";
+    const meaning = (entry.meanings||[])[0];
+    const def = meaning?.definitions?.[0];
+    return {
+      transcription,
+      definition: def?.definition || "",
+      example: def?.example || ""
+    };
+  }catch(e){ return null; }
+}
+
+async function addToVocab(word, translation, translationLang, srcLang){
+  const list = loadVocab();
+  if(list.some(v=>v.word.toLowerCase()===word.toLowerCase())){
+    renderVocab();
+    return; // already saved
+  }
+  const entry = {
+    id: genId(), word, translation, lang: translationLang, srcLang: srcLang || "en",
+    transcription:"", definition:"", example:"",
+    date: new Date().toLocaleDateString(), correctCount:0, mastered:false
+  };
+  list.unshift(entry);
+  saveVocabList(list);
+  renderVocab();
+  // best-effort enrichment, doesn't block the UI
+  const info = await fetchDictionaryInfo(word, srcLang || "en");
+  if(info){
+    const fresh = loadVocab();
+    const idx = fresh.findIndex(v=>v.id===entry.id);
+    if(idx>-1){
+      fresh[idx].transcription = fresh[idx].transcription || info.transcription;
+      fresh[idx].definition = fresh[idx].definition || info.definition;
+      fresh[idx].example = fresh[idx].example || info.example;
+      saveVocabList(fresh);
+      renderVocab();
+    }
+  }
+}
+
+function renderVocab(){
+  let list = loadVocab();
+  const box = document.getElementById("vocabList");
+  const q = (document.getElementById("vocabSearch")?.value || "").toLowerCase().trim();
+  const sortMode = document.getElementById("vocabSort")?.value || "newest";
+
+  if(q){ list = list.filter(v => v.word.toLowerCase().includes(q) || (v.translation||"").toLowerCase().includes(q)); }
+  if(sortMode === "az"){ list = [...list].sort((a,b)=>a.word.localeCompare(b.word)); }
+  else if(sortMode === "unmastered"){ list = [...list].sort((a,b)=>(a.mastered?1:0)-(b.mastered?1:0)); }
+
+  if(!list.length){
+    box.innerHTML = '<p class="text-stone-400 text-xs">No words match yet.</p>';
+    return;
+  }
+  box.innerHTML = list.map(v => `
+    <div class="border rounded-lg p-2.5" style="border-color:var(--line)">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <span class="font-medium">${escapeHtml(v.word)}</span>
+            ${v.transcription ? `<span class="font-mono text-xs text-stone-400">${escapeHtml(v.transcription)}</span>` : ""}
+            ${v.mastered ? `<span class="text-xs" style="color:var(--green)">✓ learned</span>` : ""}
+          </div>
+          <div class="text-stone-600 text-sm">→ ${escapeHtml(v.translation)}</div>
+          ${v.definition ? `<div class="text-xs text-stone-400 mt-1">${escapeHtml(v.definition)}</div>` : ""}
+          ${v.example ? `<div class="text-xs text-stone-400 italic">"${escapeHtml(v.example)}"</div>` : ""}
+        </div>
+        <div class="flex flex-col gap-1 items-end shrink-0">
+          <button class="editVocabBtn text-stone-300 hover:text-teal-700 text-xs" data-id="${v.id}">✎</button>
+          <button class="removeVocabBtn text-stone-300 hover:text-coral text-xs" data-id="${v.id}">✕</button>
+        </div>
+      </div>
+      <div class="editForm hidden mt-2 space-y-1" data-id="${v.id}">
+        <input class="editTranslation w-full border rounded px-2 py-1 text-xs" placeholder="Translation" value="${escapeAttr(v.translation)}" style="border-color:var(--line)">
+        <input class="editTranscription w-full border rounded px-2 py-1 text-xs" placeholder="Transcription" value="${escapeAttr(v.transcription)}" style="border-color:var(--line)">
+        <input class="editDefinition w-full border rounded px-2 py-1 text-xs" placeholder="Definition" value="${escapeAttr(v.definition)}" style="border-color:var(--line)">
+        <input class="editExample w-full border rounded px-2 py-1 text-xs" placeholder="Example sentence" value="${escapeAttr(v.example)}" style="border-color:var(--line)">
+        <button class="saveEditBtn text-xs px-3 py-1 rounded text-white" style="background:var(--ink)" data-id="${v.id}">Save</button>
+      </div>
+    </div>
+  `).join("");
+
+  box.querySelectorAll(".removeVocabBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      const l = loadVocab().filter(v=>v.id !== btn.dataset.id);
+      saveVocabList(l);
+      renderVocab();
+    };
+  });
+  box.querySelectorAll(".editVocabBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      const form = box.querySelector(`.editForm[data-id="${btn.dataset.id}"]`);
+      form.classList.toggle("hidden");
+    };
+  });
+  box.querySelectorAll(".saveEditBtn").forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = btn.dataset.id;
+      const form = box.querySelector(`.editForm[data-id="${id}"]`);
+      const list2 = loadVocab();
+      const idx = list2.findIndex(v=>v.id===id);
+      if(idx>-1){
+        list2[idx].translation = form.querySelector(".editTranslation").value;
+        list2[idx].transcription = form.querySelector(".editTranscription").value;
+        list2[idx].definition = form.querySelector(".editDefinition").value;
+        list2[idx].example = form.querySelector(".editExample").value;
+        saveVocabList(list2);
+      }
+      renderVocab();
+    };
+  });
+}
+
+document.getElementById("vocabSearch").addEventListener("input", renderVocab);
+document.getElementById("vocabSort").addEventListener("change", renderVocab);
+
+document.getElementById("manualVocabAddBtn").addEventListener("click", ()=>{
+  const input = document.getElementById("manualVocabWord");
+  const word = input.value.trim();
+  if(!word) return;
+  const srcLang = (selectedVoice ? selectedVoice.lang.split("-")[0] : "en");
+  const targetLang = "uk";
+  (async ()=>{
+    let translation = "";
+    try{ translation = await fetchTranslation(word, targetLang, srcLang); }catch(e){ translation = ""; }
+    addToVocab(word, translation, targetLang, srcLang);
+    input.value = "";
+  })();
+});
+
+document.getElementById("exportVocabBtn").addEventListener("click", ()=>{
+  const list = loadVocab();
+  if(!list.length){ alert("No vocabulary saved yet."); return; }
+  const text = list.map(v=>{
+    let line = `${v.word}`;
+    if(v.transcription) line += ` [${v.transcription}]`;
+    line += ` — ${v.translation}`;
+    if(v.definition) line += `\n  definition: ${v.definition}`;
+    if(v.example) line += `\n  example: ${v.example}`;
+    return line;
+  }).join("\n\n");
+  downloadFile("my-vocabulary.txt", text, "text/plain");
+});
+renderVocab();
+
+/* ============ FLASHCARDS ============ */
+let sessionQueue = [];
+let sessionTotal = 0;
+let sessionDone = 0;
+
+function buildSessionQueue(){
+  const onlyUnmastered = document.getElementById("onlyUnmasteredToggle").checked;
+  let list = loadVocab();
+  if(onlyUnmastered) list = list.filter(v=>!v.mastered);
+  sessionQueue = list.map(v=>v.id).sort(()=>Math.random()-0.5);
+  sessionTotal = sessionQueue.length;
+  sessionDone = 0;
+}
+
+function renderFlashcard(){
+  const empty = document.getElementById("flashcardEmpty");
+  const body = document.getElementById("flashcardBody");
+  document.getElementById("flashcardProgress").textContent = `${sessionDone} / ${sessionTotal} done`;
+  if(!sessionQueue.length){
+    empty.classList.remove("hidden");
+    body.classList.add("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  body.classList.remove("hidden");
+  const id = sessionQueue[0];
+  const entry = loadVocab().find(v=>v.id===id);
+  if(!entry){ sessionQueue.shift(); renderFlashcard(); return; }
+  document.getElementById("fcWord").textContent = entry.word;
+  document.getElementById("fcTranscription").textContent = entry.transcription || "";
+  document.getElementById("fcTranslation").textContent = entry.translation || "—";
+  document.getElementById("fcDefinitionWrap").classList.toggle("hidden", !entry.definition);
+  document.getElementById("fcDefinition").textContent = entry.definition || "";
+  document.getElementById("fcExampleWrap").classList.toggle("hidden", !entry.example);
+  document.getElementById("fcExample").textContent = entry.example || "";
+  document.getElementById("flashcardBack").classList.add("hidden");
+}
+
+document.getElementById("openFlashcardsBtn").addEventListener("click", ()=>{
+  buildSessionQueue();
+  document.getElementById("flashcardOverlay").classList.remove("hidden");
+  document.getElementById("flashcardOverlay").classList.add("flex");
+  renderFlashcard();
+});
+document.getElementById("closeFlashcardsBtn").addEventListener("click", ()=>{
+  document.getElementById("flashcardOverlay").classList.add("hidden");
+  document.getElementById("flashcardOverlay").classList.remove("flex");
+  renderVocab();
+});
+document.getElementById("onlyUnmasteredToggle").addEventListener("change", ()=>{
+  buildSessionQueue();
+  renderFlashcard();
+});
+document.getElementById("flashcardFront").addEventListener("click", ()=>{
+  document.getElementById("flashcardBack").classList.remove("hidden");
+});
+document.getElementById("fcKnowIt").addEventListener("click", ()=>{
+  const id = sessionQueue[0];
+  const list = loadVocab();
+  const idx = list.findIndex(v=>v.id===id);
+  if(idx>-1){
+    list[idx].correctCount = (list[idx].correctCount||0) + 1;
+    if(list[idx].correctCount >= 2) list[idx].mastered = true;
+    saveVocabList(list);
+  }
+  sessionQueue.shift();
+  sessionDone++;
+  renderFlashcard();
+});
+document.getElementById("fcStillLearning").addEventListener("click", ()=>{
+  const id = sessionQueue[0];
+  const list = loadVocab();
+  const idx = list.findIndex(v=>v.id===id);
+  if(idx>-1){
+    list[idx].correctCount = 0;
+    list[idx].mastered = false;
+    saveVocabList(list);
+  }
+  sessionQueue.push(sessionQueue.shift()); // requeue at the end for another try this session
+  renderFlashcard();
+});
+
+/* ============ OVERALL PROGRESS + BACKUP ============ */
+function renderOverallStats(){
+  const all = loadAllHistory();
+  const keys = Object.keys(all);
+  let totalAttempts = 0, totalAcc = 0, best = 0;
+  keys.forEach(k=>{
+    all[k].attempts.forEach(a=>{ totalAttempts++; totalAcc += a.accuracy; if(a.accuracy>best) best=a.accuracy; });
+  });
+  const box = document.getElementById("overallStats");
+  if(!totalAttempts){
+    box.innerHTML = '<p class="text-stone-400 text-xs">No attempts recorded yet across any text.</p>';
+    return;
+  }
+  const avg = Math.round(totalAcc/totalAttempts);
+  box.innerHTML = `
+    <div class="flex justify-between"><span>Texts practiced</span><span class="font-mono font-semibold">${keys.length}</span></div>
+    <div class="flex justify-between"><span>Total attempts</span><span class="font-mono font-semibold">${totalAttempts}</span></div>
+    <div class="flex justify-between"><span>Average accuracy</span><span class="font-mono font-semibold">${avg}%</span></div>
+    <div class="flex justify-between"><span>Best attempt</span><span class="font-mono font-semibold" style="color:var(--green)">${best}%</span></div>
+  `;
+}
+function downloadFile(filename, content, mime){
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+document.getElementById("exportProgressBtn").addEventListener("click", ()=>{
+  const backup = {
+    history: loadAllHistory(),
+    vocabulary: loadVocab(),
+    exportedAt: new Date().toISOString()
+  };
+  downloadFile("shadow-progress-backup.json", JSON.stringify(backup, null, 2), "application/json");
+});
+document.getElementById("importProgressFile").addEventListener("change", (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      if(data.history){
+        const existing = loadAllHistory();
+        Object.assign(existing, data.history);
+        localStorage.setItem("shadow_history_v1", JSON.stringify(existing));
+      }
+      if(Array.isArray(data.vocabulary)){
+        const existingVocab = loadVocab();
+        const merged = [...data.vocabulary, ...existingVocab].filter((v,i,arr)=>
+          arr.findIndex(x=>x.word.toLowerCase()===v.word.toLowerCase() && x.lang===v.lang) === i
+        );
+        saveVocabList(merged);
+      }
+      renderOverallStats();
+      renderVocab();
+      renderHistory();
+      alert("Backup imported successfully.");
+    }catch(err){
+      alert("This doesn't look like a valid backup file.");
+    }
+  };
+  reader.readAsText(file);
+});
+renderOverallStats();
+
+/* ============ TRY AGAIN / SKIP ============ */
+document.getElementById("tryAgainBtn").addEventListener("click", ()=>{
+  document.getElementById("resultBlock").classList.add("hidden");
+  document.getElementById("liveTranscript").classList.add("hidden");
+  document.getElementById("liveTranscript").textContent = "";
+  document.getElementById("recStatus").textContent = "";
+  document.getElementById("recordBtn").scrollIntoView({behavior:"smooth", block:"center"});
+});
+document.getElementById("skipBtn").addEventListener("click", ()=>{
+  document.getElementById("resultBlock").classList.add("hidden");
+  document.getElementById("liveTranscript").classList.add("hidden");
+  document.getElementById("liveTranscript").textContent = "";
+  document.getElementById("recStatus").textContent = "";
+  if(mode === "chunk" && currentChunk < sentences.length-1){
+    currentChunk++;
+    renderText();
+    renderChunkNav();
+  }
+  document.getElementById("textDisplay").scrollIntoView({behavior:"smooth", block:"center"});
+});
+
 /* ============ GROQ FEEDBACK (optional) ============ */
-const savedKey = localStorage.getItem("shadow_groq_key");
-if(savedKey) document.getElementById("groqKey").value = savedKey;
+const savedGroqKey = localStorage.getItem("shadow_groq_key");
+if(savedGroqKey) document.getElementById("groqKey").value = savedGroqKey;
+const savedElevenKey = localStorage.getItem("shadow_eleven_key");
+if(savedElevenKey) document.getElementById("elevenKey").value = savedElevenKey;
+document.getElementById("elevenKey").addEventListener("change", (e)=>{
+  localStorage.setItem("shadow_eleven_key", e.target.value.trim());
+});
 
 document.getElementById("groqFeedbackBtn").addEventListener("click", async ()=>{
   const key = document.getElementById("groqKey").value.trim();
   const resultBox = document.getElementById("groqResult");
-  if(!key){ resultBox.textContent = "Введіть ваш безкоштовний Groq API ключ."; return; }
+  if(!key){ resultBox.textContent = "Please enter your free Groq API key."; return; }
   localStorage.setItem("shadow_groq_key", key);
-  resultBox.textContent = "Аналізую...";
+  resultBox.textContent = "Analyzing...";
   const source = mode === "chunk" ? sentences[currentChunk] : currentText;
-  const prompt = `Ти — викладач вимови та просодії. Ось оригінальний текст для shadowing-тренування:\n"${source}"\n\nОсь текст, розпізнаний з мовлення студента (може містити помилки розпізнавання):\n"${recognizedTranscript}"\n\nТочність співпадіння слів: ${document.getElementById("accuracyScore").textContent}.\n\nДай короткий (4-6 речень) фідбек українською мовою про ймовірні проблеми з вимовою, ритмом, паузами та інтонацією студента, враховуючи різницю між оригіналом і розпізнаним текстом. Будь конкретним і підтримуючим, дай 1-2 практичні поради.`;
+  const prompt = `You are a pronunciation and prosody coach. Here is the original text used for a shadowing exercise:\n"${source}"\n\nHere is the text recognized from the student's speech (may contain recognition errors):\n"${recognizedTranscript}"\n\nWord-match accuracy: ${document.getElementById("accuracyScore").textContent}.\n\nGive short (4-6 sentence) feedback in English about likely pronunciation, rhythm, pausing, and intonation issues, based on the differences between the original and recognized text. Be specific and encouraging, and give 1-2 practical tips.`;
   try{
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
       method:"POST",
@@ -783,10 +1900,194 @@ document.getElementById("groqFeedbackBtn").addEventListener("click", async ()=>{
       })
     });
     const data = await res.json();
-    if(data.error){ resultBox.textContent = "Помилка Groq API: " + data.error.message; return; }
-    resultBox.textContent = data.choices?.[0]?.message?.content || "Не вдалося отримати відповідь.";
+    if(data.error){ resultBox.textContent = "Groq API error: " + data.error.message; return; }
+    resultBox.textContent = data.choices?.[0]?.message?.content || "Couldn't get a response.";
   }catch(e){
-    resultBox.textContent = "Не вдалося зв'язатися з Groq API. Перевірте ключ та з'єднання з інтернетом.";
+    resultBox.textContent = "Couldn't reach the Groq API. Check your key and internet connection.";
+  }
+});
+
+/* ============ INTERPRETATION PRACTICE (experimental) ============ */
+const LANG_LOCALE = {uk:"uk-UA", en:"en-US", de:"de-DE", es:"es-ES", fr:"fr-FR", pl:"pl-PL", it:"it-IT"};
+let interpretMode = "consecutive";
+let interpretRate = 0.75;
+let interpretRunning = false;
+let interpretResults = [];
+let interpretRecognizer = null;
+let interpretCurrentSaid = "";
+let interpretAdvanceResolve = null;
+
+document.querySelectorAll(".imode-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".imode-btn").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    interpretMode = btn.dataset.imode;
+  });
+});
+document.querySelectorAll(".irate-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".irate-btn").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    interpretRate = parseFloat(btn.dataset.irate);
+  });
+});
+
+function speakOnce(text, rate){
+  return new Promise((resolve)=>{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    if(selectedVoice) u.voice = selectedVoice;
+    u.rate = rate;
+    u.onend = ()=>resolve();
+    u.onerror = ()=>resolve();
+    speechSynthesis.speak(u);
+  });
+}
+
+function startInterpretRecognition(lang){
+  if(!SpeechRecognitionCtor) return null;
+  const rec = new SpeechRecognitionCtor();
+  rec.lang = LANG_LOCALE[lang] || "en-US";
+  rec.continuous = true;
+  rec.interimResults = true;
+  interpretCurrentSaid = "";
+  rec.onresult = (event)=>{
+    let final = "", interim = "";
+    for(let i=0;i<event.results.length;i++){
+      const r = event.results[i];
+      if(r.isFinal) final += r[0].transcript + " ";
+      else interim += r[0].transcript;
+    }
+    interpretCurrentSaid = (final + interim).trim();
+  };
+  rec.onerror = ()=>{};
+  rec.onend = ()=>{ if(interpretRecognizer === rec){ try{ rec.start(); }catch(e){} } };
+  try{ rec.start(); }catch(e){}
+  return rec;
+}
+function stopInterpretRecognition(){
+  if(interpretRecognizer){
+    const rec = interpretRecognizer;
+    interpretRecognizer = null;
+    rec.onend = null;
+    try{ rec.stop(); }catch(e){}
+  }
+}
+
+async function runInterpretationSession(){
+  if(!sentences.length){ alert("Please load a text in Step 1 first."); return; }
+  if(!SpeechRecognitionCtor){ alert("Your browser doesn't support speech recognition. Please try Google Chrome."); return; }
+  interpretRunning = true;
+  interpretResults = [];
+  document.getElementById("startInterpretBtn").classList.add("hidden");
+  document.getElementById("stopInterpretBtn").classList.remove("hidden");
+  document.getElementById("interpretResults").classList.add("hidden");
+  document.getElementById("interpretProgress").classList.remove("hidden");
+  const lang = document.getElementById("interpretLang").value;
+
+  for(let i=0; i<sentences.length && interpretRunning; i++){
+    document.getElementById("interpretProgress").textContent = `Sentence ${i+1} / ${sentences.length}`;
+    document.getElementById("interpretCurrentSentence").textContent = sentences[i];
+    document.getElementById("interpretStatus").textContent = "Get ready...";
+    await new Promise(r=>setTimeout(r, 700));
+    if(!interpretRunning) break;
+
+    if(interpretMode === "consecutive"){
+      document.getElementById("interpretStatus").textContent = "🔊 Listen...";
+      await speakOnce(sentences[i], interpretRate);
+      if(!interpretRunning) break;
+      document.getElementById("interpretStatus").textContent = '🎙 Now say your translation, then click "I\'m done"';
+      document.getElementById("nextInterpretBtn").classList.remove("hidden");
+      interpretRecognizer = startInterpretRecognition(lang);
+      await new Promise(resolve=>{ interpretAdvanceResolve = resolve; });
+      document.getElementById("nextInterpretBtn").classList.add("hidden");
+      stopInterpretRecognition();
+    } else {
+      document.getElementById("interpretStatus").textContent = "🔊🎙 Speak your translation as you listen...";
+      interpretRecognizer = startInterpretRecognition(lang);
+      await speakOnce(sentences[i], interpretRate);
+      stopInterpretRecognition();
+    }
+
+    interpretResults.push({ index:i, original: sentences[i], said: interpretCurrentSaid || "" });
+    interpretCurrentSaid = "";
+  }
+
+  interpretRunning = false;
+  document.getElementById("startInterpretBtn").classList.remove("hidden");
+  document.getElementById("stopInterpretBtn").classList.add("hidden");
+  document.getElementById("nextInterpretBtn").classList.add("hidden");
+  document.getElementById("interpretProgress").classList.add("hidden");
+  if(interpretResults.length){
+    document.getElementById("interpretStatus").textContent = "Fetching reference translations...";
+    await fillReferenceTranslations(lang);
+    renderInterpretResults();
+    document.getElementById("interpretResults").classList.remove("hidden");
+  }
+  document.getElementById("interpretStatus").textContent = "";
+}
+
+async function fillReferenceTranslations(targetLang){
+  const srcLang = (selectedVoice ? selectedVoice.lang.split("-")[0] : "en");
+  for(const r of interpretResults){
+    try{ r.reference = await fetchTranslation(r.original, targetLang, srcLang); }
+    catch(e){ r.reference = ""; }
+  }
+}
+
+function wordOverlapScore(said, reference){
+  if(!reference) return null;
+  const saidSet = new Set(said.toLowerCase().split(/\s+/).map(normalizeWord).filter(Boolean));
+  const refWords = reference.toLowerCase().split(/\s+/).map(normalizeWord).filter(Boolean);
+  if(!refWords.length) return null;
+  const hit = refWords.filter(w=>saidSet.has(w)).length;
+  return Math.round((hit/refWords.length)*100);
+}
+
+function renderInterpretResults(){
+  const box = document.getElementById("interpretResultsList");
+  box.innerHTML = interpretResults.map(r=>{
+    const score = r.said ? wordOverlapScore(r.said, r.reference||"") : null;
+    return `
+    <div class="border rounded-xl p-3" style="border-color:var(--line)">
+      <div class="text-xs text-stone-400 mb-1">Sentence ${r.index+1}${score!==null ? ` · approx. word coverage ${score}%` : ""}</div>
+      <div class="text-sm mb-1"><span class="text-stone-400">Original:</span> ${escapeHtml(r.original)}</div>
+      <div class="text-sm mb-1"><span class="text-stone-400">Your interpretation:</span> ${r.said ? escapeHtml(r.said) : '<span style="color:var(--coral)">(nothing recognized)</span>'}</div>
+      <div class="text-sm"><span class="text-stone-400">Reference translation:</span> ${escapeHtml(r.reference||"—")}</div>
+    </div>`;
+  }).join("");
+}
+
+document.getElementById("startInterpretBtn").addEventListener("click", runInterpretationSession);
+document.getElementById("stopInterpretBtn").addEventListener("click", ()=>{
+  interpretRunning = false;
+  stopInterpretRecognition();
+  speechSynthesis.cancel();
+  if(interpretAdvanceResolve){ interpretAdvanceResolve(); interpretAdvanceResolve = null; }
+});
+document.getElementById("nextInterpretBtn").addEventListener("click", ()=>{
+  if(interpretAdvanceResolve){ interpretAdvanceResolve(); interpretAdvanceResolve = null; }
+});
+
+document.getElementById("interpretGroqBtn").addEventListener("click", async ()=>{
+  const key = document.getElementById("groqKey").value.trim() || localStorage.getItem("shadow_groq_key") || "";
+  const resultBox = document.getElementById("interpretGroqResult");
+  if(!key){ resultBox.textContent = "Please enter your free Groq API key in the AI feedback section above (Step 3)."; return; }
+  if(!interpretResults.length){ resultBox.textContent = "Run an interpretation session first."; return; }
+  resultBox.textContent = "Analyzing...";
+  const payload = interpretResults.map(r=>`Sentence: "${r.original}"\nStudent's interpretation: "${r.said || "(nothing said)"}"\nReference translation: "${r.reference||""}"`).join("\n\n");
+  const prompt = `You are an interpretation trainer. Below are sentences a student practiced interpreting in real time, along with what they said and a machine reference translation (which may itself be imperfect). Give feedback in English: overall completeness, meaning accuracy, missed content, terminology issues, and 2-3 concrete tips to improve. Be concise (6-8 sentences) and encouraging.\n\n${payload}`;
+  try{
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+key },
+      body: JSON.stringify({ model:"llama-3.1-8b-instant", messages:[{role:"user", content: prompt}], max_tokens: 500 })
+    });
+    const data = await res.json();
+    if(data.error){ resultBox.textContent = "Groq API error: " + data.error.message; return; }
+    resultBox.textContent = data.choices?.[0]?.message?.content || "Couldn't get a response.";
+  }catch(e){
+    resultBox.textContent = "Couldn't reach the Groq API.";
   }
 });
 </script>
