@@ -1339,16 +1339,12 @@ async function fetchTranslation(word, targetLang, srcLang){
   return "Translation unavailable — all free translation services failed to respond. Try again, or check your connection.";
 }
 
-document.getElementById("textDisplay").addEventListener("click", async (e)=>{
-  const el = e.target.closest(".word");
-  if(!el) return;
-  const raw = decodeURIComponent(el.dataset.raw);
-  const clean = raw.replace(/[^\p{L}\p{N}'-]/gu,"");
+function showTranslationPopup(text, x, y){
+  const clean = text.replace(/[^\p{L}\p{N}'\-\s]/gu,"").trim();
   if(!clean) return;
   const popup = document.getElementById("wordPopup");
-  const rect = el.getBoundingClientRect();
-  popup.style.top = (window.scrollY + rect.bottom + 6) + "px";
-  popup.style.left = Math.min(window.scrollX + rect.left, window.innerWidth - 260) + "px";
+  popup.style.top = (window.scrollY + y + 12) + "px";
+  popup.style.left = Math.min(window.scrollX + x, window.innerWidth - 260) + "px";
   popup.classList.remove("hidden");
   document.getElementById("popupWord").textContent = clean;
   document.getElementById("popupTranslation").textContent = "Loading translation...";
@@ -1377,7 +1373,6 @@ document.getElementById("textDisplay").addEventListener("click", async (e)=>{
     const original = btn.textContent;
     btn.textContent = "Adding...";
     btn.disabled = true;
-    // make sure we have a real translation, even if the popup is still loading or previously failed
     if(!latestTranslation){
       try{ latestTranslation = await fetchTranslation(clean, targetSelect.value, srcLang); }catch(e){ latestTranslation = ""; }
     }
@@ -1385,7 +1380,31 @@ document.getElementById("textDisplay").addEventListener("click", async (e)=>{
     btn.textContent = "Added ✓";
     setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1200);
   };
+}
+
+// path 1: a single click on one word
+document.getElementById("textDisplay").addEventListener("click", (e)=>{
+  // if the user just made a text selection (drag), don't also fire the single-word popup
+  const sel = window.getSelection();
+  if(sel && sel.toString().trim().length > 0) return;
+  const el = e.target.closest(".word");
+  if(!el) return;
+  const raw = decodeURIComponent(el.dataset.raw);
+  const rect = el.getBoundingClientRect();
+  showTranslationPopup(raw, rect.left, rect.bottom - window.scrollY);
 });
+
+// path 2: dragging to highlight a word or phrase also triggers translation (of the whole selection)
+document.getElementById("textDisplay").addEventListener("mouseup", (e)=>{
+  setTimeout(()=>{
+    const sel = window.getSelection();
+    const text = sel ? sel.toString().trim() : "";
+    if(text && text.length > 1 && text.length < 200){
+      showTranslationPopup(text, e.clientX, e.clientY - window.scrollY);
+    }
+  }, 0);
+});
+
 document.addEventListener("click", (e)=>{
   const popup = document.getElementById("wordPopup");
   if(!popup.contains(e.target) && !e.target.closest(".word")){
