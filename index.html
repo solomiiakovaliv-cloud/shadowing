@@ -61,6 +61,7 @@
   .word.g-correct{background:#e3f2e8;color:var(--green);}
   .word.g-wrong{background:#fbe7e3;color:var(--coral);}
   .word.g-partial{background:#faf0da;color:var(--amber);}
+  .word.live-matched{background:#e3f2e8;color:var(--green);box-shadow:inset 0 0 0 1px var(--green);}
 
   .chip{
     border:1px solid var(--line);
@@ -167,10 +168,11 @@
           <textarea id="uploadText" rows="4" placeholder="Paste the matching transcript here, or use auto-transcription..." class="w-full border rounded-xl p-3 text-sm" style="border-color:var(--line)"></textarea>
           <div class="flex flex-wrap gap-2 mt-2">
             <button id="loadUploadTextBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">Load this transcript</button>
-            <button id="transcribeBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--teal)">Auto-transcribe (Groq Whisper, needs free key)</button>
+            <button id="freeTranscribeBtn" class="px-4 py-2 rounded-lg text-sm font-medium border" style="border-color:var(--line)">🔊 Free auto-transcribe (browser, no key)</button>
+            <button id="transcribeBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--teal)">Auto-transcribe (Groq Whisper, better quality)</button>
           </div>
           <p id="transcribeStatus" class="text-xs text-stone-500 mt-2"></p>
-          <p class="text-xs text-stone-400 mt-1">Auto-transcription uses the same free Groq API key as the AI feedback feature below (get one at console.groq.com). With a key, word-level timing is captured too, enabling karaoke highlighting synced to your real audio.</p>
+          <p class="text-xs text-stone-400 mt-1"><b>Free auto-transcribe</b> needs no signup — it plays the file out loud and listens with your browser's own speech recognition, so use <b>speakers, not headphones</b>, in a quiet room. Quality is lower than Whisper (may miss words or punctuation). <b>Groq Whisper</b> needs a free key (console.groq.com, ~1 minute, no card) but gives noticeably better accuracy and word-level timing for karaoke highlighting.</p>
         </div>
       </div>
 
@@ -227,11 +229,16 @@
           <div id="ytPlayerDiv"></div>
         </div>
         <div class="mt-3 pt-3 border-t" style="border-color:var(--line)">
-          <p class="text-xs text-stone-500 mb-2">No captions for this video? Capture this tab's own audio and auto-transcribe it with Whisper (needs a free Groq key from Step 3, and Chrome or Edge). When the share dialog appears, choose <b>"This Tab"</b> and check <b>"Share tab audio"</b>.</p>
-          <div class="flex items-center gap-3">
-            <button id="startTabCaptureBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">🎤 Capture tab audio & auto-transcribe</button>
+          <p class="text-xs text-stone-500 mb-2">No captions for this video? Two ways to auto-transcribe it:</p>
+          <div class="flex items-center gap-3 flex-wrap mb-2">
+            <button id="freeYtTranscribeBtn" class="px-4 py-2 rounded-lg text-sm font-medium border" style="border-color:var(--line)">🔊 Free auto-transcribe (browser, no key)</button>
+            <button id="stopFreeYtTranscribeBtn" class="hidden px-4 py-2 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Stop</button>
+          </div>
+          <div class="flex items-center gap-3 flex-wrap">
+            <button id="startTabCaptureBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">🎤 Capture tab audio (Groq Whisper, better quality)</button>
             <button id="stopTabCaptureBtn" class="hidden px-4 py-2 rounded-lg text-sm font-medium border" style="border-color:var(--line)">Stop capture</button>
           </div>
+          <p class="text-xs text-stone-400 mt-2"><b>Free auto-transcribe</b> needs no signup — it plays the video out loud and listens with your browser's own speech recognition (<b>use speakers, not headphones</b>, in a quiet room). <b>Capture tab audio</b> needs a free Groq key (Step 3, ~1 minute, no card) but gives much better accuracy — when the share dialog appears, choose <b>"This Tab"</b> and check <b>"Share tab audio"</b>.</p>
         </div>
       </div>
 
@@ -321,7 +328,12 @@
         <h2 class="font-display text-lg font-semibold">Record your shadowing</h2>
       </div>
 
-      <p class="text-sm text-stone-500 mb-4">Click "Start recording" — after the 3…2…1 countdown, speak along with the text (shadowing). Speech recognition works best in Google Chrome.</p>
+      <p class="text-sm text-stone-500 mb-2">Click "Start recording" — after the 3…2…1 countdown, speak along with the text (shadowing). Speech recognition works best in Google Chrome.</p>
+
+      <label class="flex items-center gap-2 text-sm text-stone-600 mb-4">
+        <input id="liveShadowToggle" type="checkbox" checked>
+        Live mode: highlight words in the text above <b>as they're recognized</b>, in real time, while you speak — instead of only showing results at the end.
+      </label>
 
       <div class="flex items-center gap-3 mb-4">
         <button id="recordBtn" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--coral)">🎙 Start recording</button>
@@ -354,6 +366,19 @@
           <span><span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1" style="background:#fbe7e3;border:1px solid var(--coral)"></span>missed / wrong</span>
         </div>
         <div id="diffDisplay" class="border rounded-xl p-4 leading-relaxed" style="border-color:var(--line); background:var(--paper)"></div>
+        <div id="heardTranscriptWrap" class="hidden mt-2 text-xs text-stone-500">
+          <span class="text-stone-400">What we heard you say (useful for understanding a red/yellow word):</span>
+          <div id="heardTranscript" class="italic mt-1"></div>
+        </div>
+
+        <div id="selfReviewBlock" class="mt-4 pt-4 border-t" style="border-color:var(--line)">
+          <p class="text-xs text-stone-500 mb-2">🔁 Compare by ear: play the original again, then listen to your own take.</p>
+          <div class="flex items-center gap-3 flex-wrap">
+            <button id="replayOriginalBtn" class="px-3 py-1.5 rounded-lg text-sm font-medium border" style="border-color:var(--line)">▶ Play original again</button>
+            <span class="text-xs text-stone-400">Your recording:</span>
+            <audio id="ownRecordingPlayer" controls class="h-9"></audio>
+          </div>
+        </div>
 
         <div class="flex gap-3 mt-4">
           <button id="tryAgainBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white" style="background:var(--teal)">↻ Try again</button>
@@ -416,6 +441,7 @@
 
       <div id="interpretProgress" class="text-xs font-mono text-stone-500 mb-2 hidden"></div>
       <div id="interpretCurrentSentence" class="border rounded-xl p-4 min-h-[70px] mb-3 text-base" style="border-color:var(--line); background:var(--paper)"></div>
+      <div id="interpretLiveSaid" class="hidden border rounded-xl p-3 mb-3 text-sm text-stone-500 italic" style="border-color:var(--line)"></div>
 
       <div class="flex items-center gap-3 mb-2 flex-wrap">
         <button id="startInterpretBtn" class="px-5 py-2.5 rounded-lg text-sm font-medium text-white" style="background:var(--ink)">🌍 Start interpretation practice</button>
@@ -580,6 +606,10 @@ let wordTimestamps = null; // [{word, start, end}] when Whisper word timing is a
 let lastPlaybackDurationMs = null;
 let recordStartTime = null;
 let recordDurationMs = null;
+let selfReviewStream = null;
+let selfReviewRecorder = null;
+let selfReviewChunks = [];
+let lastRecordingUrl = null;
 
 /* ============ DEMO TEXTS ============ */
 const DEMO_TEXTS = {
@@ -1018,6 +1048,52 @@ async function transcribeTabAudioBlob(blob, key){
 document.getElementById("startTabCaptureBtn").addEventListener("click", startTabAudioCapture);
 document.getElementById("stopTabCaptureBtn").addEventListener("click", stopTabAudioCapture);
 
+let freeYtRecognizer = null;
+let freeYtFinalText = "";
+
+function startFreeYtTranscribe(){
+  const status = document.getElementById("ytStatus");
+  if(!ytPlayer || !currentYoutubeId){ alert("Please load a YouTube video first."); return; }
+  if(!SpeechRecognitionCtor){ status.textContent = "Your browser doesn't support speech recognition. Please try Google Chrome."; return; }
+  freeYtFinalText = "";
+  const rec = new SpeechRecognitionCtor();
+  rec.lang = selectedVoice ? selectedVoice.lang : "en-US";
+  rec.continuous = true;
+  rec.interimResults = true;
+  let recognizing = true;
+  rec.onresult = (event)=>{
+    let final = "";
+    for(let i=event.resultIndex; i<event.results.length; i++){
+      if(event.results[i].isFinal) final += event.results[i][0].transcript + " ";
+    }
+    freeYtFinalText += final;
+  };
+  rec.onerror = ()=>{};
+  rec.onend = ()=>{ if(recognizing){ try{ rec.start(); }catch(e){} } };
+  rec.start();
+  freeYtRecognizer = { stop(){ recognizing = false; try{ rec.stop(); }catch(e){} } };
+
+  document.getElementById("freeYtTranscribeBtn").classList.add("hidden");
+  document.getElementById("stopFreeYtTranscribeBtn").classList.remove("hidden");
+  status.textContent = "🔴 Listening via your speakers + microphone — the video will play now. Click Stop once it ends.";
+  try{ ytPlayer.seekTo(0); ytPlayer.playVideo(); }catch(e){}
+}
+function stopFreeYtTranscribe(){
+  if(freeYtRecognizer){ freeYtRecognizer.stop(); freeYtRecognizer = null; }
+  document.getElementById("freeYtTranscribeBtn").classList.remove("hidden");
+  document.getElementById("stopFreeYtTranscribeBtn").classList.add("hidden");
+  const status = document.getElementById("ytStatus");
+  const text = freeYtFinalText.trim();
+  if(text){
+    loadText(text);
+    status.textContent = "Free transcript captured ✓ (browser recognition — review it, some words may be off). Highlighting won't be word-synced with this method.";
+  } else {
+    status.textContent = "No speech was recognized. Make sure the video's volume was audible to your microphone, then try again.";
+  }
+}
+document.getElementById("freeYtTranscribeBtn").addEventListener("click", startFreeYtTranscribe);
+document.getElementById("stopFreeYtTranscribeBtn").addEventListener("click", stopFreeYtTranscribe);
+
 /* ============ UPLOADED MEDIA ============ */
 document.getElementById("mediaFile").addEventListener("change", (e)=>{
   const file = e.target.files[0];
@@ -1041,6 +1117,51 @@ document.getElementById("loadUploadTextBtn").addEventListener("click", ()=>{
   if(val.trim().length < 3){ alert("Please paste a transcript first."); return; }
   loadText(val);
 });
+
+let freeTranscribeRecognizer = null;
+let freeTranscribeFinalText = "";
+
+function startFreeTranscribe(){
+  const status = document.getElementById("transcribeStatus");
+  if(!uploadedMediaEl){ status.textContent = "Please choose a file first."; return; }
+  if(!SpeechRecognitionCtor){ status.textContent = "Your browser doesn't support speech recognition. Please try Google Chrome."; return; }
+  freeTranscribeFinalText = "";
+  const rec = new SpeechRecognitionCtor();
+  rec.lang = selectedVoice ? selectedVoice.lang : "en-US";
+  rec.continuous = true;
+  rec.interimResults = true;
+  let recognizing = true;
+  rec.onresult = (event)=>{
+    let final = "";
+    for(let i=event.resultIndex; i<event.results.length; i++){
+      if(event.results[i].isFinal) final += event.results[i][0].transcript + " ";
+    }
+    freeTranscribeFinalText += final;
+  };
+  rec.onerror = ()=>{};
+  rec.onend = ()=>{ if(recognizing){ try{ rec.start(); }catch(e){} } };
+  rec.start();
+  freeTranscribeRecognizer = { stop(){ recognizing = false; try{ rec.stop(); }catch(e){} } };
+
+  uploadedMediaEl.currentTime = 0;
+  uploadedMediaEl.play();
+  status.textContent = "🔴 Listening via your speakers + microphone... make sure the volume is audible and the room is quiet.";
+  uploadedMediaEl.onended = ()=>{ stopFreeTranscribe(); };
+}
+function stopFreeTranscribe(){
+  if(freeTranscribeRecognizer){ freeTranscribeRecognizer.stop(); freeTranscribeRecognizer = null; }
+  if(uploadedMediaEl) uploadedMediaEl.pause();
+  const status = document.getElementById("transcribeStatus");
+  const text = freeTranscribeFinalText.trim();
+  if(text){
+    document.getElementById("uploadText").value = text;
+    loadText(text);
+    status.textContent = "Free transcript captured ✓ (browser recognition — review it, some words may be off).";
+  } else {
+    status.textContent = "No speech was recognized. Make sure the volume was audible to your microphone, then try again.";
+  }
+}
+document.getElementById("freeTranscribeBtn").addEventListener("click", startFreeTranscribe);
 
 document.getElementById("transcribeBtn").addEventListener("click", async ()=>{
   const status = document.getElementById("transcribeStatus");
@@ -1434,6 +1555,20 @@ function startCountdownThenRecord(){
   },1000);
 }
 
+function liveHighlightProgress(){
+  const container = document.getElementById("textDisplay");
+  const source = mode === "chunk" ? (sentences[currentChunk]||"") : currentText;
+  if(!source) return;
+  const rawOrigTokens = source.split(/\s+/).filter(Boolean);
+  const origWords = rawOrigTokens.map(normalizeWord);
+  const saidWords = recognizedTranscript.split(/\s+/).filter(Boolean).map(normalizeWord);
+  const {matchedOrig} = alignWords(origWords, saidWords);
+  const spans = [...container.querySelectorAll(".word")];
+  spans.forEach((el,idx)=>{
+    if(matchedOrig.has(idx)){ el.classList.add("live-matched"); }
+  });
+}
+
 function actuallyStartRecording(){
   if(!SpeechRecognitionCtor){
     alert("Your browser doesn't support speech recognition. Please try Google Chrome.");
@@ -1444,9 +1579,11 @@ function actuallyStartRecording(){
   recognition.continuous = true;
   recognition.interimResults = true;
   recognizedTranscript = "";
+  document.querySelectorAll("#textDisplay .word.live-matched").forEach(el=>el.classList.remove("live-matched"));
   const live = document.getElementById("liveTranscript");
   live.classList.remove("hidden");
   live.textContent = "Listening...";
+  const liveModeOn = document.getElementById("liveShadowToggle").checked;
 
   recognition.onresult = (event)=>{
     let interim = "", final = "";
@@ -1457,6 +1594,7 @@ function actuallyStartRecording(){
     }
     recognizedTranscript = (final + interim).trim();
     live.textContent = recognizedTranscript || "Listening...";
+    if(liveModeOn && currentText) liveHighlightProgress();
   };
   recognition.onerror = (e)=>{
     document.getElementById("recStatus").textContent = "Recognition error: " + e.error;
@@ -1471,7 +1609,22 @@ function actuallyStartRecording(){
   recordStartTime = performance.now();
   document.getElementById("recordBtn").classList.add("hidden");
   document.getElementById("recordStopBtn").classList.remove("hidden");
-  document.getElementById("recStatus").textContent = "🔴 recording...";
+  document.getElementById("recStatus").textContent = liveModeOn && currentText
+    ? "🔴 recording — words will turn green in the text above as they're recognized..."
+    : "🔴 recording...";
+
+  // also capture the raw audio in parallel, so the student can play back their own take afterward
+  selfReviewChunks = [];
+  if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({ audio:true }).then(stream=>{
+      selfReviewStream = stream;
+      try{
+        selfReviewRecorder = new MediaRecorder(stream);
+        selfReviewRecorder.ondataavailable = (e)=>{ if(e.data.size>0) selfReviewChunks.push(e.data); };
+        selfReviewRecorder.start();
+      }catch(e){ selfReviewRecorder = null; }
+    }).catch(()=>{ selfReviewStream = null; selfReviewRecorder = null; });
+  }
 }
 
 document.getElementById("recordBtn").addEventListener("click", startCountdownThenRecord);
@@ -1483,8 +1636,28 @@ document.getElementById("recordStopBtn").addEventListener("click", ()=>{
   document.getElementById("recordBtn").classList.remove("hidden");
   document.getElementById("recordStopBtn").classList.add("hidden");
   document.getElementById("recStatus").textContent = "Recording finished.";
+
+  if(selfReviewRecorder && selfReviewRecorder.state !== "inactive"){
+    selfReviewRecorder.onstop = ()=>{
+      const blob = new Blob(selfReviewChunks, { type: "audio/webm" });
+      if(lastRecordingUrl) URL.revokeObjectURL(lastRecordingUrl);
+      lastRecordingUrl = URL.createObjectURL(blob);
+      if(selfReviewStream) selfReviewStream.getTracks().forEach(t=>t.stop());
+      renderSelfReviewPlayer();
+    };
+    selfReviewRecorder.stop();
+  } else {
+    lastRecordingUrl = null;
+  }
+
   runComparison();
 });
+
+function renderSelfReviewPlayer(){
+  const player = document.getElementById("ownRecordingPlayer");
+  if(!player) return;
+  if(lastRecordingUrl){ player.src = lastRecordingUrl; }
+}
 
 /* ============ COMPARISON / SCORING ============ */
 function alignWords(origWords, saidWords){
@@ -1508,8 +1681,36 @@ function alignWords(origWords, saidWords){
   return {matchedOrig, matchedSaid};
 }
 
+function renderSpeedCompare(){
+  const speedBox = document.getElementById("speedCompare");
+  if(lastPlaybackDurationMs && recordDurationMs){
+    const origSec = (lastPlaybackDurationMs/1000).toFixed(1);
+    const yourSec = (recordDurationMs/1000).toFixed(1);
+    const diffPct = Math.round(((recordDurationMs-lastPlaybackDurationMs)/lastPlaybackDurationMs)*100);
+    const label = diffPct > 5 ? `${diffPct}% slower than the original` : diffPct < -5 ? `${Math.abs(diffPct)}% faster than the original` : "very close to the original pace";
+    speedBox.textContent = `⏱ Your pace: ${yourSec}s vs ${origSec}s for the original — ${label}.`;
+  } else {
+    speedBox.textContent = "⏱ Play the audio right before recording to see a pace comparison.";
+  }
+}
+
 function runComparison(){
-  if(!currentText){ return; }
+  if(!currentText){
+    // pure listen-and-repeat mode: no transcript loaded, so word-accuracy scoring isn't possible.
+    // This is actually how classic shadowing is traditionally practiced — by ear, without reading along.
+    document.getElementById("accuracyScore").textContent = "—";
+    document.getElementById("accuracyBar").style.width = "0%";
+    document.getElementById("deltaCompare").innerHTML = '<span class="text-stone-400">No transcript loaded, so there\'s no word-accuracy score — that\'s normal for pure listen-and-repeat shadowing. Judge your pronunciation and rhythm by ear below.</span>';
+    document.getElementById("diffDisplay").innerHTML = '<span class="text-stone-400 text-sm">Want a % score instead? Load a text (demo, your own, or auto-transcribed) in Step 1.</span>';
+    document.getElementById("heardTranscriptWrap").classList.toggle("hidden", !recognizedTranscript);
+    document.getElementById("heardTranscript").textContent = recognizedTranscript || "";
+    renderSpeedCompare();
+    document.getElementById("resultBlock").classList.remove("hidden");
+    document.getElementById("resultBlock").scrollIntoView({behavior:"smooth", block:"nearest"});
+    recordDailyActivity();
+    showToast("Attempt saved ✓");
+    return;
+  }
   const isChunk = mode === "chunk";
   const source = isChunk ? sentences[currentChunk] : currentText;
   const rawOrigTokens = source.split(/\s+/).filter(Boolean);
@@ -1558,20 +1759,11 @@ function runComparison(){
     }
   }
   document.getElementById("deltaCompare").innerHTML = deltaHtml;
-
-  // speed comparison
-  const speedBox = document.getElementById("speedCompare");
-  if(lastPlaybackDurationMs && recordDurationMs){
-    const origSec = (lastPlaybackDurationMs/1000).toFixed(1);
-    const yourSec = (recordDurationMs/1000).toFixed(1);
-    const diffPct = Math.round(((recordDurationMs-lastPlaybackDurationMs)/lastPlaybackDurationMs)*100);
-    const label = diffPct > 5 ? `${diffPct}% slower than the original` : diffPct < -5 ? `${Math.abs(diffPct)}% faster than the original` : "very close to the original pace";
-    speedBox.textContent = `⏱ Your pace: ${yourSec}s vs ${origSec}s for the original — ${label}.`;
-  } else {
-    speedBox.textContent = "⏱ Play the audio (browser or premium voice) right before recording to see a pace comparison.";
-  }
+  renderSpeedCompare();
 
   document.getElementById("diffDisplay").innerHTML = display;
+  document.getElementById("heardTranscriptWrap").classList.toggle("hidden", !recognizedTranscript);
+  document.getElementById("heardTranscript").textContent = recognizedTranscript || "";
   document.getElementById("accuracyScore").textContent = accuracy + "%";
   document.getElementById("accuracyBar").style.width = accuracy + "%";
   document.getElementById("resultBlock").classList.remove("hidden");
@@ -2060,6 +2252,10 @@ document.getElementById("importProgressFile").addEventListener("change", (e)=>{
 renderOverallStats();
 
 /* ============ TRY AGAIN / SKIP ============ */
+document.getElementById("replayOriginalBtn").addEventListener("click", ()=>{
+  document.getElementById("playBtn").click();
+});
+
 document.getElementById("tryAgainBtn").addEventListener("click", ()=>{
   document.getElementById("resultBlock").classList.add("hidden");
   document.getElementById("liveTranscript").classList.add("hidden");
@@ -2162,6 +2358,9 @@ function startInterpretRecognition(lang){
   rec.continuous = true;
   rec.interimResults = true;
   interpretCurrentSaid = "";
+  const liveBox = document.getElementById("interpretLiveSaid");
+  liveBox.classList.remove("hidden");
+  liveBox.textContent = "Listening for your translation...";
   rec.onresult = (event)=>{
     let final = "", interim = "";
     for(let i=0;i<event.results.length;i++){
@@ -2170,6 +2369,7 @@ function startInterpretRecognition(lang){
       else interim += r[0].transcript;
     }
     interpretCurrentSaid = (final + interim).trim();
+    liveBox.textContent = interpretCurrentSaid || "Listening for your translation...";
   };
   rec.onerror = ()=>{};
   rec.onend = ()=>{ if(interpretRecognizer === rec){ try{ rec.start(); }catch(e){} } };
@@ -2177,6 +2377,7 @@ function startInterpretRecognition(lang){
   return rec;
 }
 function stopInterpretRecognition(){
+  document.getElementById("interpretLiveSaid").classList.add("hidden");
   if(interpretRecognizer){
     const rec = interpretRecognizer;
     interpretRecognizer = null;
